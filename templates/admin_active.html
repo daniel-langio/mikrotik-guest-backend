@@ -1,0 +1,8 @@
+<table border="1" cellpadding="4">
+  <tr><th>User</th><th>Address</th><th>MAC</th><th>Uptime</th></tr>
+  {{range .}}
+  <tr><td>{{.User}}</td><td>{{.Address}}</td><td>{{.MacAddr}}</td><td>{{.Uptime}}</td></tr>
+  {{else}}
+  <tr><td colspan="4">No active sessions</td></tr>
+  {{end}}
+</table>

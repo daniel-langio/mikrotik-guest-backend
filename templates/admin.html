@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+  <title>Guest Access Admin</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <h1>Guest Access Admin</h1>
+
+  <h2>Pending devices</h2>
+  <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
+
+  <h2>Active sessions</h2>
+  <div id="active" hx-get="/admin/active" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+</body>
+</html>
