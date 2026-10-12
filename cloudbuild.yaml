@@ -1,0 +1,17 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/aphrodite0/mikrotik-guest-backend/server:$SHORT_SHA', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', 'asia-southeast1-docker.pkg.dev/aphrodite0/mikrotik-guest-backend/server:$SHORT_SHA']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - mikrotik-guest-backend
+      - --image=asia-southeast1-docker.pkg.dev/aphrodite0/mikrotik-guest-backend/server:$SHORT_SHA
+      - --region=asia-southeast1
+      - --platform=managed
+options:
+  logging: CLOUD_LOGGING_ONLY
