@@ -2,9 +2,6 @@ package main
 
 import (
 	"os"
-	"regexp"
-	"strconv"
-	"time"
 
 	"github.com/go-routeros/routeros/v3"
 )
@@ -14,21 +11,17 @@ import (
 //
 // RouterOS 6.x has no REST API (that's a v7-only feature) - this router runs
 // 6.49.20, so the binary API is the only option here.
+//
+// Approval uses /ip/hotspot/ip-binding type=bypassed rather than
+// /ip/hotspot/user: a device sitting on our walled-garden-permitted welcome
+// page never generates a new intercepted request, so login-by=mac never
+// gets a chance to fire and the device just sits there with no session.
+// A bypass binding takes effect immediately, no new request needed. Time
+// enforcement moves to our own DB (approved_at + duration), swept on
+// /admin/active's poll - see sweepExpiredSessions in db.go.
 type MikroTikClient interface {
-	AddHotspotUser(name, mac, limitUptime string) error
-	GetActiveSessions() ([]ActiveSession, error)
-	// RemoveExpiredUsers deletes GuestPortal hotspot users whose accumulated
-	// uptime has reached their limit-uptime (RouterOS disconnects the session
-	// itself but never cleans up the stale user record) and returns the MAC
-	// addresses removed, so the caller can reconcile its own DB.
-	RemoveExpiredUsers() ([]string, error)
-}
-
-type ActiveSession struct {
-	User    string
-	Address string
-	MacAddr string
-	Uptime  string
+	AuthorizeDevice(mac string) error
+	DeauthorizeDevice(mac string) error
 }
 
 type routerOSClient struct {
@@ -51,100 +44,42 @@ func (c *routerOSClient) dial() (*routeros.Client, error) {
 	return routeros.Dial(c.address, c.user, c.pass)
 }
 
-func (c *routerOSClient) AddHotspotUser(name, mac, limitUptime string) error {
+// AuthorizeDevice grants a device internet access immediately, scoped to our
+// own GuestPortal server - this router also runs a separate, pre-existing
+// "Aphrodite Temple" hotspot that must stay untouched.
+func (c *routerOSClient) AuthorizeDevice(mac string) error {
 	client, err := c.dial()
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
-	// Scoped to our own hotspot server/profile - this router also runs a
-	// separate, pre-existing "Aphrodite Temple" hotspot that must stay untouched.
-	_, err = client.Run("/ip/hotspot/user/add",
-		"=name="+name,
+	_, err = client.Run("/ip/hotspot/ip-binding/add",
 		"=mac-address="+mac,
-		"=limit-uptime="+limitUptime,
+		"=type=bypassed",
 		"=server=GuestPortal",
-		"=profile=guest-portal-profile",
 	)
 	return err
 }
 
-func (c *routerOSClient) GetActiveSessions() ([]ActiveSession, error) {
+func (c *routerOSClient) DeauthorizeDevice(mac string) error {
 	client, err := c.dial()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer client.Close()
 
-	// Scoped to our own hotspot server - this router also runs a separate,
-	// pre-existing "Aphrodite Temple" hotspot that must never show up here.
-	reply, err := client.Run("/ip/hotspot/active/print", "?server=GuestPortal")
+	reply, err := client.Run("/ip/hotspot/ip-binding/print",
+		"?mac-address="+mac,
+		"?server=GuestPortal",
+	)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	sessions := make([]ActiveSession, 0, len(reply.Re))
 	for _, re := range reply.Re {
-		sessions = append(sessions, ActiveSession{
-			User:    re.Map["user"],
-			Address: re.Map["address"],
-			MacAddr: re.Map["mac-address"],
-			Uptime:  re.Map["uptime"],
-		})
-	}
-	return sessions, nil
-}
-
-var routerOSDurationPart = regexp.MustCompile(`(\d+)([wdhms])`)
-
-// parseRouterOSDuration parses RouterOS's compact duration format, e.g.
-// "4w1d23h22m50s" or "0s". Unknown/empty input parses as zero.
-func parseRouterOSDuration(s string) time.Duration {
-	var total time.Duration
-	for _, m := range routerOSDurationPart.FindAllStringSubmatch(s, -1) {
-		n, _ := strconv.Atoi(m[1])
-		switch m[2] {
-		case "w":
-			total += time.Duration(n) * 7 * 24 * time.Hour
-		case "d":
-			total += time.Duration(n) * 24 * time.Hour
-		case "h":
-			total += time.Duration(n) * time.Hour
-		case "m":
-			total += time.Duration(n) * time.Minute
-		case "s":
-			total += time.Duration(n) * time.Second
+		if _, err := client.Run("/ip/hotspot/ip-binding/remove", "=.id="+re.Map[".id"]); err != nil {
+			return err
 		}
 	}
-	return total
-}
-
-func (c *routerOSClient) RemoveExpiredUsers() ([]string, error) {
-	client, err := c.dial()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
-
-	reply, err := client.Run("/ip/hotspot/user/print", "?server=GuestPortal")
-	if err != nil {
-		return nil, err
-	}
-
-	var removedMACs []string
-	for _, re := range reply.Re {
-		limit := re.Map["limit-uptime"]
-		if limit == "" {
-			continue // no limit set, never expires
-		}
-		if parseRouterOSDuration(re.Map["uptime"]) < parseRouterOSDuration(limit) {
-			continue
-		}
-		if _, err := client.Run("/ip/hotspot/user/remove", "=.id="+re.Map[".id"]); err != nil {
-			continue
-		}
-		removedMACs = append(removedMACs, re.Map["mac-address"])
-	}
-	return removedMACs, nil
+	return nil
 }

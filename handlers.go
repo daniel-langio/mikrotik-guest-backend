@@ -89,34 +89,21 @@ func (a *App) adminPending(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
-	// Opportunistic sweep, piggybacked on the dashboard's existing 5s poll -
-	// RouterOS disconnects an expired session on its own but never deletes
-	// the stale hotspot user record, so a returning guest would otherwise be
-	// treated as still-approved forever.
-	if expiredMACs, err := a.mt.RemoveExpiredUsers(); err == nil {
+	// Opportunistic sweep, piggybacked on the dashboard's existing 5s poll.
+	// Approval uses an ip-binding bypass with no RouterOS-side time limit, so
+	// our own DB (approved_at + duration) is the only thing tracking expiry.
+	if expiredMACs, err := sweepExpiredSessions(a.db); err == nil {
 		for _, mac := range expiredMACs {
-			expireSessionByMAC(a.db, mac)
+			a.mt.DeauthorizeDevice(mac)
 		}
 	}
 
-	sessions, err := a.mt.GetActiveSessions()
+	sessions, err := listApproved(a.db)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	tmpl.ExecuteTemplate(w, "admin_active.html", sessions)
-}
-
-// approveDevice maps an approved pending session onto the MikroTik call.
-// Extracted so it's testable without a live database.
-//
-// The hotspot profile uses login-by=mac with the default mac-as-username
-// mode, which auto-authenticates a client by looking up a /ip hotspot user
-// whose *name* equals the device's MAC - not by matching the mac-address
-// field. So the RouterOS-side username has to be the MAC itself; sess.Username
-// (GUEST-xxxx) stays a purely cosmetic label in our own DB/UI.
-func approveDevice(mt MikroTikClient, sess PendingSession, duration string) error {
-	return mt.AddHotspotUser(sess.MACAddress, sess.MACAddress, duration)
 }
 
 func (a *App) approve(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +119,7 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if err := approveDevice(a.mt, sess, duration); err != nil {
+	if err := a.mt.AuthorizeDevice(sess.MACAddress); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}

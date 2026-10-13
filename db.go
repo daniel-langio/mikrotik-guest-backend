@@ -67,12 +67,58 @@ func getOpenSessionByMAC(db *sql.DB, mac string) (PendingSession, error) {
 	return s, err
 }
 
-func expireSessionByMAC(db *sql.DB, mac string) error {
-	_, err := db.Exec(
-		`UPDATE pending_sessions SET status = 'expired' WHERE mac_address = $1 AND status = 'approved'`,
-		mac,
+// sweepExpiredSessions flips any 'approved' row whose duration has elapsed to
+// 'expired' and returns their MACs, so the caller can revoke router access.
+// duration is stored in MikroTik's "HH:MM:SS" format, which Postgres parses
+// directly as an interval literal.
+func sweepExpiredSessions(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(
+		`UPDATE pending_sessions SET status = 'expired'
+		 WHERE status = 'approved' AND approved_at + duration::interval <= now()
+		 RETURNING mac_address`,
 	)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var macs []string
+	for rows.Next() {
+		var mac string
+		if err := rows.Scan(&mac); err != nil {
+			return nil, err
+		}
+		macs = append(macs, mac)
+	}
+	return macs, rows.Err()
+}
+
+type ApprovedSession struct {
+	Username   string
+	MACAddress string
+	Remaining  string
+}
+
+func listApproved(db *sql.DB) ([]ApprovedSession, error) {
+	rows, err := db.Query(
+		`SELECT username, mac_address,
+		        to_char(duration::interval - (now() - approved_at), 'HH24:MI:SS') AS remaining
+		 FROM pending_sessions WHERE status = 'approved' ORDER BY approved_at`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []ApprovedSession
+	for rows.Next() {
+		var s ApprovedSession
+		if err := rows.Scan(&s.Username, &s.MACAddress, &s.Remaining); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
 }
 
 func getSession(db *sql.DB, id int) (PendingSession, error) {
