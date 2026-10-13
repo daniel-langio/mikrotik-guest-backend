@@ -19,6 +19,7 @@ func main() {
 	app := &App{db: db, mt: newRouterOSClient()}
 
 	mux := http.NewServeMux()
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
 	mux.HandleFunc("GET /admin", app.adminPage)

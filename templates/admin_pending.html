@@ -1,23 +1,20 @@
-<table border="1" cellpadding="4">
-  <tr><th>Username</th><th>MAC</th><th>IP</th><th>Created</th><th>Action</th></tr>
-  {{range .}}
-  <tr>
-    <td>{{.Username}}</td>
-    <td>{{.MACAddress}}</td>
-    <td>{{.IPAddress}}</td>
-    <td>{{.CreatedAt.Format "15:04:05"}}</td>
-    <td>
-      <form hx-post="/admin/approve/{{.ID}}" hx-target="#pending" hx-swap="innerHTML">
-        <select name="duration">
-          <option value="00:30:00">30 min</option>
-          <option value="02:00:00" selected>2 hours</option>
-          <option value="24:00:00">24 hours</option>
-        </select>
-        <button type="submit">Approve</button>
-      </form>
-    </td>
-  </tr>
-  {{else}}
-  <tr><td colspan="5">No pending devices</td></tr>
-  {{end}}
-</table>
+{{range .}}
+<div class="card">
+  <div class="row">
+    <div>
+      <div class="name">{{.Username}}</div>
+      <div class="meta">{{.MACAddress}} &middot; {{.IPAddress}} &middot; {{.CreatedAt.Format "15:04:05"}}</div>
+    </div>
+    <form class="approve-form" hx-post="/admin/approve/{{.ID}}" hx-target="#pending" hx-swap="innerHTML">
+      <select name="duration">
+        <option value="00:30:00">30 min</option>
+        <option value="02:00:00" selected>2 hours</option>
+        <option value="24:00:00">24 hours</option>
+      </select>
+      <button type="submit">Approve</button>
+    </form>
+  </div>
+</div>
+{{else}}
+<div class="card"><p class="empty">No pending devices</p></div>
+{{end}}

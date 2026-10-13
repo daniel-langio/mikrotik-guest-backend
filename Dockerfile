@@ -8,6 +8,7 @@ RUN CGO_ENABLED=0 go build -o /bin/server .
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /bin/server /server
 COPY templates /templates
+COPY static /static
 WORKDIR /
 EXPOSE 8080
 ENTRYPOINT ["/server"]

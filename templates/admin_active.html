@@ -1,8 +1,13 @@
-<table border="1" cellpadding="4">
-  <tr><th>User</th><th>Address</th><th>MAC</th><th>Uptime</th></tr>
-  {{range .}}
-  <tr><td>{{.User}}</td><td>{{.Address}}</td><td>{{.MacAddr}}</td><td>{{.Uptime}}</td></tr>
-  {{else}}
-  <tr><td colspan="4">No active sessions</td></tr>
-  {{end}}
-</table>
+{{range .}}
+<div class="card">
+  <div class="row">
+    <div>
+      <div class="name"><span class="dot"></span>{{.User}}</div>
+      <div class="meta">{{.Address}} &middot; {{.MacAddr}}</div>
+    </div>
+    <div class="meta">{{.Uptime}}</div>
+  </div>
+</div>
+{{else}}
+<div class="card"><p class="empty">No active sessions</p></div>
+{{end}}

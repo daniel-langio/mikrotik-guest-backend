@@ -1,14 +1,21 @@
 <!doctype html>
 <html>
 <head>
-  <title>Guest Wi-Fi</title>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <title>Aphrodite Guest Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
 </head>
 <body>
-  <h1>Welcome!</h1>
-  <p>Your temporary guest username is: <strong>{{.Username}}</strong></p>
-  <p>An administrator needs to approve your session before you get full internet access.</p>
-  <p>This page will redirect automatically once approved - no need to refresh.</p>
+  <div class="page">
+    <div class="card welcome-card">
+      <h1>Welcome</h1>
+      <p class="subtitle">Aphrodite Guest Portal</p>
+      <div class="badge">{{.Username}}</div>
+      <p class="status-line"><span class="pulse"></span>Waiting for an administrator to approve your session&hellip;</p>
+      <p class="status-line">You'll be connected automatically once approved - no need to refresh.</p>
+    </div>
+  </div>
   <div hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-swap="none"></div>
 </body>
 </html>

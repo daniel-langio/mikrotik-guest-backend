@@ -1,16 +1,25 @@
 <!doctype html>
 <html>
 <head>
-  <title>Guest Access Admin</title>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <title>Aphrodite Guest Portal · Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
 </head>
 <body>
-  <h1>Guest Access Admin</h1>
+  <div class="page">
+    <div class="titlebar">
+      <div>
+        <h1>Aphrodite</h1>
+        <p class="subtitle">Guest Portal Admin</p>
+      </div>
+    </div>
 
-  <h2>Pending devices</h2>
-  <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
+    <h2>Pending devices</h2>
+    <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
 
-  <h2>Active sessions</h2>
-  <div id="active" hx-get="/admin/active" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+    <h2>Active sessions</h2>
+    <div id="active" hx-get="/admin/active" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+  </div>
 </body>
 </html>
