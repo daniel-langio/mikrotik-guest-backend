@@ -94,6 +94,7 @@ func sweepExpiredSessions(db *sql.DB) ([]string, error) {
 }
 
 type ApprovedSession struct {
+	ID         int
 	Username   string
 	MACAddress string
 	Remaining  string
@@ -101,7 +102,7 @@ type ApprovedSession struct {
 
 func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	rows, err := db.Query(
-		`SELECT username, mac_address,
+		`SELECT id, username, mac_address,
 		        to_char(duration::interval - (now() - approved_at), 'HH24:MI:SS') AS remaining
 		 FROM pending_sessions WHERE status = 'approved' ORDER BY approved_at`,
 	)
@@ -113,12 +114,20 @@ func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	var sessions []ApprovedSession
 	for rows.Next() {
 		var s ApprovedSession
-		if err := rows.Scan(&s.Username, &s.MACAddress, &s.Remaining); err != nil {
+		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Remaining); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
 	}
 	return sessions, rows.Err()
+}
+
+// deleteSession removes a row outright and returns its MAC, so the caller
+// can revoke router access too.
+func deleteSession(db *sql.DB, id int) (string, error) {
+	var mac string
+	err := db.QueryRow(`DELETE FROM pending_sessions WHERE id = $1 RETURNING mac_address`, id).Scan(&mac)
+	return mac, err
 }
 
 func getSession(db *sql.DB, id int) (PendingSession, error) {

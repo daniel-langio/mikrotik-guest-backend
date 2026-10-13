@@ -26,6 +26,7 @@ func main() {
 	mux.HandleFunc("GET /admin/pending", app.adminPending)
 	mux.HandleFunc("GET /admin/active", app.adminActive)
 	mux.HandleFunc("POST /admin/approve/{id}", app.approve)
+	mux.HandleFunc("POST /admin/disconnect/{id}", app.adminDisconnect)
 
 	port := os.Getenv("PORT")
 	if port == "" {

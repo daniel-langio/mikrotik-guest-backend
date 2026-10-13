@@ -7,10 +7,13 @@
     </div>
     <form class="approve-form" hx-post="/admin/approve/{{.ID}}" hx-target="#pending" hx-swap="innerHTML">
       <select name="duration">
+        <option value="00:05:00">5 min</option>
+        <option value="00:15:00">15 min</option>
         <option value="00:30:00">30 min</option>
-        <option value="02:00:00" selected>2 hours</option>
+        <option value="02:00:00">2 hours</option>
         <option value="24:00:00">24 hours</option>
       </select>
+      <input type="text" name="custom_duration" placeholder="HH:MM:SS" pattern="\d{1,4}:\d{2}:\d{2}" size="8">
       <button type="submit">Approve</button>
     </form>
   </div>

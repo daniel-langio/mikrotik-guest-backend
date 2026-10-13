@@ -6,10 +6,17 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 var tmpl = template.Must(template.ParseGlob("templates/*.html"))
+
+// Matches MikroTik's limit-uptime format (HH:MM:SS, hours uncapped). Enforced
+// server-side since a malformed value would break the duration::interval
+// cast in sweepExpiredSessions for every approved row, not just this one.
+var durationFormat = regexp.MustCompile(`^\d{1,4}:\d{2}:\d{2}$`)
 
 func redirectURL() string {
 	if u := os.Getenv("REDIRECT_URL"); u != "" {
@@ -106,6 +113,32 @@ func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
 	tmpl.ExecuteTemplate(w, "admin_active.html", sessions)
 }
 
+// adminDisconnect kicks a device off the router and removes its session
+// row outright (not just marking it expired - the admin asked to delete it).
+func (a *App) adminDisconnect(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	mac, err := deleteSession(a.db, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err := a.mt.DeauthorizeDevice(mac); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	sessions, err := listApproved(a.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl.ExecuteTemplate(w, "admin_active.html", sessions)
+}
+
 func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -113,6 +146,13 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := r.FormValue("duration")
+	if custom := strings.TrimSpace(r.FormValue("custom_duration")); custom != "" {
+		duration = custom
+	}
+	if !durationFormat.MatchString(duration) {
+		http.Error(w, "duration must be HH:MM:SS", http.StatusBadRequest)
+		return
+	}
 
 	sess, err := getSession(a.db, id)
 	if err != nil {

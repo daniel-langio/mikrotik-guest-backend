@@ -5,7 +5,12 @@
       <div class="name"><span class="dot"></span>{{.Username}}</div>
       <div class="meta">{{.MACAddress}}</div>
     </div>
-    <div class="meta">{{.Remaining}} left</div>
+    <div class="row">
+      <div class="meta">{{.Remaining}} left</div>
+      <form hx-post="/admin/disconnect/{{.ID}}" hx-target="#active" hx-swap="innerHTML" hx-confirm="Disconnect and delete this session?">
+        <button type="submit">Disconnect</button>
+      </form>
+    </div>
   </div>
 </div>
 {{else}}
