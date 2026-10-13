@@ -114,6 +114,12 @@ button, .btn {
 
 button:hover { background: #45413a; }
 
+/* htmx adds .htmx-request to the element with hx-post while the request is
+   in flight - gives immediate feedback that a click registered. */
+.htmx-request button, button.htmx-request {
+  background: #4f8f7b;
+}
+
 .welcome-card {
   text-align: center;
   padding: 48px 28px;

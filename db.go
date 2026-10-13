@@ -99,13 +99,12 @@ type ApprovedSession struct {
 	Username   string
 	MACAddress string
 	Router     string
-	Remaining  string
+	ExpiresAt  time.Time
 }
 
 func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	rows, err := db.Query(
-		`SELECT id, username, mac_address, router,
-		        to_char(duration::interval - (now() - approved_at), 'HH24:MI:SS') AS remaining
+		`SELECT id, username, mac_address, router, approved_at + duration::interval AS expires_at
 		 FROM pending_sessions WHERE status = 'approved' ORDER BY approved_at`,
 	)
 	if err != nil {
@@ -116,7 +115,7 @@ func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	var sessions []ApprovedSession
 	for rows.Next() {
 		var s ApprovedSession
-		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.Remaining); err != nil {
+		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.ExpiresAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)

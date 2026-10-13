@@ -2,13 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 var tmpl = template.Must(template.ParseGlob("templates/*.html"))
@@ -17,6 +17,16 @@ var tmpl = template.Must(template.ParseGlob("templates/*.html"))
 // server-side since a malformed value would break the duration::interval
 // cast in sweepExpiredSessions for every approved row, not just this one.
 var durationFormat = regexp.MustCompile(`^\d{1,4}:\d{2}:\d{2}$`)
+
+// atoiOrZero parses an optional numeric form field. ok is false when s is
+// empty, so callers can tell "not provided" apart from "provided as 0".
+func atoiOrZero(s string) (n int, ok bool) {
+	if s == "" {
+		return 0, false
+	}
+	n, _ = strconv.Atoi(s)
+	return n, true
+}
 
 func redirectURL() string {
 	if u := os.Getenv("REDIRECT_URL"); u != "" {
@@ -160,8 +170,11 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := r.FormValue("duration")
-	if custom := strings.TrimSpace(r.FormValue("custom_duration")); custom != "" {
-		duration = custom
+	h, hOK := atoiOrZero(r.FormValue("custom_h"))
+	m, mOK := atoiOrZero(r.FormValue("custom_m"))
+	s, sOK := atoiOrZero(r.FormValue("custom_s"))
+	if hOK || mOK || sOK {
+		duration = fmt.Sprintf("%d:%02d:%02d", h, m, s)
 	}
 	if !durationFormat.MatchString(duration) {
 		http.Error(w, "duration must be HH:MM:SS", http.StatusBadRequest)
