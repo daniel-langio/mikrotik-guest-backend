@@ -35,8 +35,19 @@ func randSuffix() string {
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	mac := r.URL.Query().Get("mac")
 	ip := r.URL.Query().Get("ip")
-	username := "GUEST-" + randSuffix()
 
+	// Reuse this device's existing pending/approved session on a refresh,
+	// rather than minting a new GUEST-xxxx account and orphaning whatever
+	// row the admin is currently looking at.
+	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
+		tmpl.ExecuteTemplate(w, "welcome.html", map[string]any{"Username": sess.Username, "ID": sess.ID})
+		return
+	} else if err != sql.ErrNoRows {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	username := "GUEST-" + randSuffix()
 	id, err := insertPending(a.db, mac, ip, username)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,6 +89,16 @@ func (a *App) adminPending(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
+	// Opportunistic sweep, piggybacked on the dashboard's existing 5s poll -
+	// RouterOS disconnects an expired session on its own but never deletes
+	// the stale hotspot user record, so a returning guest would otherwise be
+	// treated as still-approved forever.
+	if expiredMACs, err := a.mt.RemoveExpiredUsers(); err == nil {
+		for _, mac := range expiredMACs {
+			expireSessionByMAC(a.db, mac)
+		}
+	}
+
 	sessions, err := a.mt.GetActiveSessions()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)

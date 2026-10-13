@@ -2,6 +2,9 @@ package main
 
 import (
 	"os"
+	"regexp"
+	"strconv"
+	"time"
 
 	"github.com/go-routeros/routeros/v3"
 )
@@ -14,6 +17,11 @@ import (
 type MikroTikClient interface {
 	AddHotspotUser(name, mac, limitUptime string) error
 	GetActiveSessions() ([]ActiveSession, error)
+	// RemoveExpiredUsers deletes GuestPortal hotspot users whose accumulated
+	// uptime has reached their limit-uptime (RouterOS disconnects the session
+	// itself but never cleans up the stale user record) and returns the MAC
+	// addresses removed, so the caller can reconcile its own DB.
+	RemoveExpiredUsers() ([]string, error)
 }
 
 type ActiveSession struct {
@@ -86,4 +94,57 @@ func (c *routerOSClient) GetActiveSessions() ([]ActiveSession, error) {
 		})
 	}
 	return sessions, nil
+}
+
+var routerOSDurationPart = regexp.MustCompile(`(\d+)([wdhms])`)
+
+// parseRouterOSDuration parses RouterOS's compact duration format, e.g.
+// "4w1d23h22m50s" or "0s". Unknown/empty input parses as zero.
+func parseRouterOSDuration(s string) time.Duration {
+	var total time.Duration
+	for _, m := range routerOSDurationPart.FindAllStringSubmatch(s, -1) {
+		n, _ := strconv.Atoi(m[1])
+		switch m[2] {
+		case "w":
+			total += time.Duration(n) * 7 * 24 * time.Hour
+		case "d":
+			total += time.Duration(n) * 24 * time.Hour
+		case "h":
+			total += time.Duration(n) * time.Hour
+		case "m":
+			total += time.Duration(n) * time.Minute
+		case "s":
+			total += time.Duration(n) * time.Second
+		}
+	}
+	return total
+}
+
+func (c *routerOSClient) RemoveExpiredUsers() ([]string, error) {
+	client, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/ip/hotspot/user/print", "?server=GuestPortal")
+	if err != nil {
+		return nil, err
+	}
+
+	var removedMACs []string
+	for _, re := range reply.Re {
+		limit := re.Map["limit-uptime"]
+		if limit == "" {
+			continue // no limit set, never expires
+		}
+		if parseRouterOSDuration(re.Map["uptime"]) < parseRouterOSDuration(limit) {
+			continue
+		}
+		if _, err := client.Run("/ip/hotspot/user/remove", "=.id="+re.Map[".id"]); err != nil {
+			continue
+		}
+		removedMACs = append(removedMACs, re.Map["mac-address"])
+	}
+	return removedMACs, nil
 }

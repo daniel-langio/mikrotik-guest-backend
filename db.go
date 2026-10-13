@@ -53,6 +53,28 @@ func listPending(db *sql.DB) ([]PendingSession, error) {
 	return sessions, rows.Err()
 }
 
+// getOpenSessionByMAC finds this device's existing pending/approved session,
+// if any - so a page refresh reuses it instead of minting a new GUEST-xxxx
+// account and orphaning whatever the admin is looking at.
+func getOpenSessionByMAC(db *sql.DB, mac string) (PendingSession, error) {
+	var s PendingSession
+	err := db.QueryRow(
+		`SELECT id, mac_address, ip_address, username, status, duration, created_at, approved_at
+		 FROM pending_sessions WHERE mac_address = $1 AND status IN ('pending', 'approved')
+		 ORDER BY created_at DESC LIMIT 1`,
+		mac,
+	).Scan(&s.ID, &s.MACAddress, &s.IPAddress, &s.Username, &s.Status, &s.Duration, &s.CreatedAt, &s.ApprovedAt)
+	return s, err
+}
+
+func expireSessionByMAC(db *sql.DB, mac string) error {
+	_, err := db.Exec(
+		`UPDATE pending_sessions SET status = 'expired' WHERE mac_address = $1 AND status = 'approved'`,
+		mac,
+	)
+	return err
+}
+
 func getSession(db *sql.DB, id int) (PendingSession, error) {
 	var s PendingSession
 	err := db.QueryRow(

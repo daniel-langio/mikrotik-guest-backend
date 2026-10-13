@@ -1,6 +1,24 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestParseRouterOSDuration(t *testing.T) {
+	cases := map[string]time.Duration{
+		"":              0,
+		"0s":            0,
+		"1h30m0s":       90 * time.Minute,
+		"2h":            2 * time.Hour,
+		"4w1d23h22m50s": 4*7*24*time.Hour + 24*time.Hour + 23*time.Hour + 22*time.Minute + 50*time.Second,
+	}
+	for in, want := range cases {
+		if got := parseRouterOSDuration(in); got != want {
+			t.Errorf("parseRouterOSDuration(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
 
 type fakeMikroTik struct {
 	gotName     string
@@ -14,6 +32,8 @@ func (f *fakeMikroTik) AddHotspotUser(name, mac, limitUptime string) error {
 }
 
 func (f *fakeMikroTik) GetActiveSessions() ([]ActiveSession, error) { return nil, nil }
+
+func (f *fakeMikroTik) RemoveExpiredUsers() ([]string, error) { return nil, nil }
 
 func TestApproveDevice_UsesMACAsRouterOSUsername(t *testing.T) {
 	fake := &fakeMikroTik{}
