@@ -24,7 +24,7 @@ ROUTER_NAME="${4:?router name required}"
 BACKEND_HOST="${5:?backend host required (e.g. mikrotik-guest-backend-xxx.run.app)}"
 API_PASSWORD="${6:?api password required}"
 
-SSID="Aphrodite Guest Portal"
+SSID="Aphrodite Guest"
 NEW_COUNT=0
 EXISTS_COUNT=0
 
