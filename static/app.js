@@ -6,7 +6,7 @@ function localizeTimes(root) {
   });
 }
 document.addEventListener('DOMContentLoaded', function () { localizeTimes(document); });
-document.body.addEventListener('htmx:afterSwap', function (e) { localizeTimes(e.target); });
+document.addEventListener('htmx:afterSwap', function (e) { localizeTimes(e.target); });
 
 // Countdown is evaluated client-side from each session's absolute expiry
 // instant, so it ticks every second instead of only updating on the
@@ -27,4 +27,4 @@ function tickCountdowns() {
 }
 setInterval(tickCountdowns, 1000);
 document.addEventListener('DOMContentLoaded', tickCountdowns);
-document.body.addEventListener('htmx:afterSwap', tickCountdowns);
+document.addEventListener('htmx:afterSwap', tickCountdowns);
