@@ -20,6 +20,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /welcome", app.welcome)
+	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
 	mux.HandleFunc("GET /admin", app.adminPage)
 	mux.HandleFunc("GET /admin/pending", app.adminPending)
 	mux.HandleFunc("GET /admin/active", app.adminActive)

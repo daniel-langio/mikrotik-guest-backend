@@ -1,9 +1,14 @@
 <!doctype html>
 <html>
-<head><title>Guest Wi-Fi</title></head>
+<head>
+  <title>Guest Wi-Fi</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
 <body>
   <h1>Welcome!</h1>
   <p>Your temporary guest username is: <strong>{{.Username}}</strong></p>
   <p>An administrator needs to approve your session before you get full internet access.</p>
+  <p>This page will redirect automatically once approved - no need to refresh.</p>
+  <div hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-swap="none"></div>
 </body>
 </html>

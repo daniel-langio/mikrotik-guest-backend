@@ -5,10 +5,18 @@ import (
 	"html/template"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 )
 
 var tmpl = template.Must(template.ParseGlob("templates/*.html"))
+
+func redirectURL() string {
+	if u := os.Getenv("REDIRECT_URL"); u != "" {
+		return u
+	}
+	return "https://en.wikipedia.org/wiki/Aphrodite"
+}
 
 type App struct {
 	db *sql.DB
@@ -29,11 +37,31 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	ip := r.URL.Query().Get("ip")
 	username := "GUEST-" + randSuffix()
 
-	if _, err := insertPending(a.db, mac, ip, username); err != nil {
+	id, err := insertPending(a.db, mac, ip, username)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "welcome.html", map[string]any{"Username": username})
+	tmpl.ExecuteTemplate(w, "welcome.html", map[string]any{"Username": username, "ID": id})
+}
+
+// welcomeStatus is polled by the guest's own welcome page. Once an admin
+// approves the session, it tells htmx to redirect the browser (HX-Redirect)
+// instead of swapping any content - the guest never has to do anything.
+func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	sess, err := getSession(a.db, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if sess.Status == "approved" {
+		w.Header().Set("HX-Redirect", redirectURL())
+	}
 }
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
