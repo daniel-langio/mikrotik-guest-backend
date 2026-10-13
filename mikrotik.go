@@ -1,96 +1,89 @@
 package main
 
 import (
-	"bytes"
-	"crypto/tls"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
+
+	"github.com/go-routeros/routeros/v3"
 )
 
-// MikroTikClient talks to RouterOS's REST API. Behind an interface so
-// handlers can be tested against a fake without real hardware.
+// MikroTikClient talks to RouterOS's binary API (ports 8728/8729). Behind an
+// interface so handlers can be tested against a fake without real hardware.
+//
+// RouterOS 6.x has no REST API (that's a v7-only feature) - this router runs
+// 6.49.20, so the binary API is the only option here.
 type MikroTikClient interface {
 	AddHotspotUser(name, mac, limitUptime string) error
 	GetActiveSessions() ([]ActiveSession, error)
 }
 
 type ActiveSession struct {
-	User    string `json:"user"`
-	Address string `json:"address"`
-	MacAddr string `json:"mac-address"`
-	Uptime  string `json:"uptime"`
+	User    string
+	Address string
+	MacAddr string
+	Uptime  string
 }
 
 type routerOSClient struct {
-	baseURL string
+	address string
 	user    string
 	pass    string
-	http    *http.Client
 }
 
 func newRouterOSClient() *routerOSClient {
 	return &routerOSClient{
-		baseURL: "https://" + os.Getenv("MIKROTIK_HOST"),
+		address: os.Getenv("MIKROTIK_HOST"), // host:port, e.g. "102.18.61.39:8728"
 		user:    os.Getenv("MIKROTIK_USER"),
 		pass:    os.Getenv("MIKROTIK_PASS"),
-		http: &http.Client{
-			// ponytail: router likely has a self-signed cert; skip verify for
-			// now, add a pinned CA if/when it gets a real certificate.
-			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		},
 	}
 }
 
-func (c *routerOSClient) do(method, path string, body, out any) error {
-	var reqBody *bytes.Reader
-	if body != nil {
-		b, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		reqBody = bytes.NewReader(b)
-	} else {
-		reqBody = bytes.NewReader(nil)
-	}
-
-	req, err := http.NewRequest(method, c.baseURL+path, reqBody)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(c.user, c.pass)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("mikrotik API %s %s: status %d", method, path, resp.StatusCode)
-	}
-	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
-	}
-	return nil
+// dial opens a fresh connection per call. Traffic volume here (an admin
+// approving guests) is far too low to justify a pooled/persistent client.
+func (c *routerOSClient) dial() (*routeros.Client, error) {
+	return routeros.Dial(c.address, c.user, c.pass)
 }
 
-// AddHotspotUser creates the hotspot user record. RouterOS's REST API uses
-// PUT on the collection endpoint to add an item (not POST, despite the
-// illustrative example in the architecture doc).
 func (c *routerOSClient) AddHotspotUser(name, mac, limitUptime string) error {
-	payload := map[string]string{
-		"name":         name,
-		"mac-address":  mac,
-		"limit-uptime": limitUptime,
+	client, err := c.dial()
+	if err != nil {
+		return err
 	}
-	return c.do(http.MethodPut, "/rest/ip/hotspot/user", payload, nil)
+	defer client.Close()
+
+	// Scoped to our own hotspot server/profile - this router also runs a
+	// separate, pre-existing "Aphrodite Temple" hotspot that must stay untouched.
+	_, err = client.Run("/ip/hotspot/user/add",
+		"=name="+name,
+		"=mac-address="+mac,
+		"=limit-uptime="+limitUptime,
+		"=server=GuestPortal",
+		"=profile=guest-portal-profile",
+	)
+	return err
 }
 
 func (c *routerOSClient) GetActiveSessions() ([]ActiveSession, error) {
-	var sessions []ActiveSession
-	err := c.do(http.MethodGet, "/rest/ip/hotspot/active", nil, &sessions)
-	return sessions, err
+	client, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	// Scoped to our own hotspot server - this router also runs a separate,
+	// pre-existing "Aphrodite Temple" hotspot that must never show up here.
+	reply, err := client.Run("/ip/hotspot/active/print", "?server=GuestPortal")
+	if err != nil {
+		return nil, err
+	}
+
+	sessions := make([]ActiveSession, 0, len(reply.Re))
+	for _, re := range reply.Re {
+		sessions = append(sessions, ActiveSession{
+			User:    re.Map["user"],
+			Address: re.Map["address"],
+			MacAddr: re.Map["mac-address"],
+			Uptime:  re.Map["uptime"],
+		})
+	}
+	return sessions, nil
 }
