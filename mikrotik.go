@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/go-routeros/routeros/v3"
 )
@@ -30,12 +31,28 @@ type routerOSClient struct {
 	pass    string
 }
 
-func newRouterOSClient() *routerOSClient {
-	return &routerOSClient{
-		address: os.Getenv("MIKROTIK_HOST"), // host:port, e.g. "102.18.61.39:8728"
-		user:    os.Getenv("MIKROTIK_USER"),
-		pass:    os.Getenv("MIKROTIK_PASS"),
+// loadRouters parses ROUTERS, e.g.
+//   "aphrodite|102.18.61.39:8728|backend-api|pass1;cythera|192.168.1.201:8728|backend-api|pass2"
+// into a name -> client map. The first entry is the default router, used
+// when a guest's login page doesn't specify one (older login.html copies).
+func loadRouters() (clients map[string]MikroTikClient, defaultName string) {
+	clients = map[string]MikroTikClient{}
+	for _, entry := range strings.Split(os.Getenv("ROUTERS"), ";") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		parts := strings.Split(entry, "|")
+		if len(parts) != 4 {
+			continue
+		}
+		name := parts[0]
+		clients[name] = &routerOSClient{address: parts[1], user: parts[2], pass: parts[3]}
+		if defaultName == "" {
+			defaultName = name
+		}
 	}
+	return clients, defaultName
 }
 
 // dial opens a fresh connection per call. Traffic volume here (an admin

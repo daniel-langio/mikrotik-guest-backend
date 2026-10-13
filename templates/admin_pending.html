@@ -3,7 +3,7 @@
   <div class="row">
     <div>
       <div class="name">{{.Username}}</div>
-      <div class="meta">{{.MACAddress}} &middot; {{.IPAddress}} &middot; {{.CreatedAt.Format "15:04:05"}}</div>
+      <div class="meta">{{.Router}} &middot; {{.MACAddress}} &middot; {{.IPAddress}} &middot; {{.CreatedAt.Format "15:04:05"}}</div>
     </div>
     <form class="approve-form" hx-post="/admin/approve/{{.ID}}" hx-target="#pending" hx-swap="innerHTML">
       <select name="duration" id="duration-{{.ID}}" hx-preserve="true">

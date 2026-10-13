@@ -16,7 +16,11 @@ func main() {
 	}
 	defer db.Close()
 
-	app := &App{db: db, mt: newRouterOSClient()}
+	routers, defaultRouter := loadRouters()
+	if len(routers) == 0 {
+		log.Fatal("ROUTERS is empty - need at least one name|host:port|user|pass entry")
+	}
+	app := &App{db: db, routers: routers, defaultRouter: defaultRouter}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

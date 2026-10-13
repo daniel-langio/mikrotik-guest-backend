@@ -26,8 +26,18 @@ func redirectURL() string {
 }
 
 type App struct {
-	db *sql.DB
-	mt MikroTikClient
+	db            *sql.DB
+	routers       map[string]MikroTikClient
+	defaultRouter string
+}
+
+// router returns the client for name, falling back to the default router if
+// name is empty or unknown (e.g. an older login.html without &router=).
+func (a *App) router(name string) MikroTikClient {
+	if mt, ok := a.routers[name]; ok {
+		return mt
+	}
+	return a.routers[a.defaultRouter]
 }
 
 func randSuffix() string {
@@ -42,6 +52,10 @@ func randSuffix() string {
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	mac := r.URL.Query().Get("mac")
 	ip := r.URL.Query().Get("ip")
+	router := r.URL.Query().Get("router")
+	if router == "" {
+		router = a.defaultRouter
+	}
 
 	// Reuse this device's existing pending/approved session on a refresh,
 	// rather than minting a new GUEST-xxxx account and orphaning whatever
@@ -55,7 +69,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := "GUEST-" + randSuffix()
-	id, err := insertPending(a.db, mac, ip, username)
+	id, err := insertPending(a.db, mac, ip, username, router)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -99,9 +113,9 @@ func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
 	// Opportunistic sweep, piggybacked on the dashboard's existing 5s poll.
 	// Approval uses an ip-binding bypass with no RouterOS-side time limit, so
 	// our own DB (approved_at + duration) is the only thing tracking expiry.
-	if expiredMACs, err := sweepExpiredSessions(a.db); err == nil {
-		for _, mac := range expiredMACs {
-			a.mt.DeauthorizeDevice(mac)
+	if expired, err := sweepExpiredSessions(a.db); err == nil {
+		for _, e := range expired {
+			a.router(e.Router).DeauthorizeDevice(e.MAC)
 		}
 	}
 
@@ -121,12 +135,12 @@ func (a *App) adminDisconnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	mac, err := deleteSession(a.db, id)
+	router, mac, err := deleteSession(a.db, id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if err := a.mt.DeauthorizeDevice(mac); err != nil {
+	if err := a.router(router).DeauthorizeDevice(mac); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
@@ -159,7 +173,7 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if err := a.mt.AuthorizeDevice(sess.MACAddress); err != nil {
+	if err := a.router(sess.Router).AuthorizeDevice(sess.MACAddress); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
