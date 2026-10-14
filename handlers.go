@@ -9,9 +9,19 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 )
 
-var tmpl = template.Must(template.ParseGlob("templates/*.html"))
+// buildVersion busts stale static-asset caches on mobile browsers, which
+// have no equivalent to a desktop hard-refresh - appending it to every
+// asset URL guarantees a fresh fetch after each deploy, no user action
+// needed (Cache-Control: no-cache alone still needs a revalidation
+// round-trip the client isn't guaranteed to make).
+var buildVersion = fmt.Sprintf("%d", time.Now().Unix())
+
+var tmpl = template.Must(template.New("").Funcs(template.FuncMap{
+	"v": func() string { return buildVersion },
+}).ParseGlob("templates/*.html"))
 
 // Matches MikroTik's limit-uptime format (HH:MM:SS, hours uncapped). Enforced
 // server-side since a malformed value would break the duration::interval
