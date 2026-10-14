@@ -29,12 +29,21 @@ setInterval(tickCountdowns, 1000);
 document.addEventListener('DOMContentLoaded', tickCountdowns);
 document.addEventListener('htmx:afterSwap', tickCountdowns);
 
-// Toast notifications for admin actions. Works for any htmx-triggered
-// request without per-handler backend changes: success/failure is read off
-// the response itself, only POSTs are announced (GET polling stays silent).
+// Toast notifications. Success is only announced for POSTs (an approve/
+// disconnect click), but errors are surfaced for ANY request - including
+// the background 3s/5s dashboard polls - since a failing poll (e.g. the
+// database or a router going unreachable) is exactly the kind of thing an
+// admin needs to notice. De-duped so a prolonged outage doesn't spam a new
+// identical banner every poll cycle.
+var lastToastText = '';
+var lastToastAt = 0;
 function showToast(message, isError) {
   var container = document.getElementById('toast-container');
   if (!container) return;
+  var now = Date.now();
+  if (message === lastToastText && now - lastToastAt < 4000) return;
+  lastToastText = message;
+  lastToastAt = now;
   var el = document.createElement('div');
   el.className = 'toast ' + (isError ? 'toast-error' : 'toast-success');
   el.textContent = message;
@@ -43,9 +52,8 @@ function showToast(message, isError) {
 }
 document.addEventListener('htmx:afterRequest', function (e) {
   var verb = (e.detail.requestConfig && e.detail.requestConfig.verb) || '';
-  if (verb !== 'post') return;
   if (e.detail.successful) {
-    showToast('Done', false);
+    if (verb === 'post') showToast('Done', false);
   } else {
     showToast(e.detail.xhr.responseText || 'Something went wrong', true);
   }

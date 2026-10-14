@@ -1,18 +1,20 @@
-{{range .}}
 <div class="card">
-  <div class="row">
-    <div>
-      <div class="name"><span class="dot"></span>{{.Username}}</div>
-      <div class="meta">{{.Router}} &middot; {{.MACAddress}}</div>
-    </div>
+{{range .}}
+  <div class="item">
     <div class="row">
-      <div class="meta countdown" data-expires="{{.ExpiresAt.Format "2006-01-02T15:04:05Z07:00"}}">&hellip;</div>
-      <form hx-post="/admin/disconnect/{{.ID}}" hx-target="#active" hx-swap="innerHTML" hx-confirm="Disconnect and delete this session?">
-        <button type="submit">Disconnect</button>
-      </form>
+      <div>
+        <div class="name"><span class="dot"></span>{{.Username}}</div>
+        <div class="meta">{{.Router}} &middot; {{.MACAddress}}</div>
+      </div>
+      <div class="row">
+        <div class="meta countdown" data-expires="{{.ExpiresAt.Format "2006-01-02T15:04:05Z07:00"}}">&hellip;</div>
+        <form hx-post="/admin/disconnect/{{.ID}}" hx-target="#active" hx-swap="innerHTML" hx-confirm="Disconnect and delete this session?">
+          <button type="submit" class="btn-danger">Disconnect</button>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 {{else}}
-<div class="card"><p class="empty">No active sessions</p></div>
+  <p class="empty">No active sessions</p>
 {{end}}
+</div>

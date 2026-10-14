@@ -9,15 +9,14 @@
 </head>
 <body>
   <div id="toast-container"></div>
-  <div class="page">
-    <div class="titlebar">
-      <div>
-        <h1>Aphrodite</h1>
-        <p class="subtitle">Guest Portal Admin</p>
-      </div>
-      <form method="post" action="/logout"><button type="submit">Log out</button></form>
+  <div class="appbar">
+    <div>
+      <h1>Aphrodite</h1>
+      <p class="subtitle">Guest Portal Admin</p>
     </div>
-
+    <form method="post" action="/logout"><button type="submit">Log out</button></form>
+  </div>
+  <div class="page">
     <h2>Pending devices</h2>
     <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
 

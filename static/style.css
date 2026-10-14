@@ -1,54 +1,85 @@
 * { box-sizing: border-box; }
 
+:root {
+  --primary: #3F51B5;
+  --primary-dark: #303F9F;
+  --accent: #4CAF50;
+  --accent-dark: #388E3C;
+  --danger: #F44336;
+  --danger-dark: #D32F2F;
+  --grey-50: #ECEFF1;
+  --grey-100: #ECEFF1;
+  --grey-300: #CFD8DC;
+  --grey-500: #78909C;
+  --grey-900: #263238;
+}
+
 body {
   margin: 0;
-  background: #d9d2ca;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #2b2823;
-  padding: 24px 16px 60px;
+  background: var(--grey-50);
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--grey-900);
+}
+
+.appbar {
+  background: var(--primary);
+  color: #fff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .page {
   max-width: 720px;
   margin: 0 auto;
-}
-
-.titlebar {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 18px;
+  padding: 20px 16px 60px;
 }
 
 h1 {
-  font-size: 30px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 500;
   margin: 0;
-  letter-spacing: -0.5px;
 }
 
 .subtitle {
-  color: #6b6459;
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
   margin: 2px 0 0;
 }
 
-h2 {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #847c6d;
-  font-weight: 700;
-  margin: 28px 0 10px;
+/* .subtitle defaults to white for the indigo appbar; cards have a white
+   background instead, so it needs a dark variant there. */
+.card .subtitle {
+  color: var(--grey-500);
 }
 
-.card {
-  background: #f3efe8;
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(40, 35, 25, 0.18);
-  padding: 18px 20px;
-  margin-bottom: 14px;
+h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--grey-500);
+  font-weight: 700;
+  margin: 24px 0 8px;
 }
+
+/* A "card" is a Material-style elevated surface - used both as a standalone
+   panel and as the container around a list of .item rows. */
+.card {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.item {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--grey-100);
+}
+
+.item:last-child { border-bottom: none; }
 
 .row {
   display: flex;
@@ -58,13 +89,14 @@ h2 {
 }
 
 .name {
-  font-weight: 700;
-  font-size: 17px;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--grey-900);
 }
 
 .meta {
-  color: #847c6d;
-  font-size: 13px;
+  color: var(--grey-500);
+  font-size: 12px;
   margin-top: 2px;
 }
 
@@ -73,14 +105,14 @@ h2 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4f8f7b;
+  background: var(--accent);
   margin-right: 6px;
 }
 
 .empty {
-  color: #9a917f;
+  color: var(--grey-500);
   font-style: italic;
-  padding: 6px 2px;
+  padding: 14px 18px;
 }
 
 form.approve-form {
@@ -91,61 +123,75 @@ form.approve-form {
 }
 
 select, input[type="text"], input[type="password"], input[type="number"] {
-  border: none;
-  border-radius: 999px;
-  background: #e6dfd3;
-  padding: 8px 14px;
+  border: 1px solid var(--grey-300);
+  border-radius: 4px;
+  background: #fff;
+  padding: 7px 10px;
   font-size: 13px;
-  color: #2b2823;
-  font-weight: 600;
+  color: var(--grey-900);
 }
 
 #toast-container {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  padding: 0 16px;
 }
 
 .toast {
-  padding: 12px 18px;
-  border-radius: 12px;
+  padding: 13px 18px;
+  border-radius: 4px;
   font-size: 13px;
-  font-weight: 600;
-  color: #f3efe8;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  font-weight: 500;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   animation: toast-in 0.2s ease-out;
 }
 
-.toast-success { background: #4f8f7b; }
-.toast-error { background: #c0392b; }
+.toast-success { background: var(--grey-900); }
+.toast-error { background: var(--danger); }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 button, .btn {
   border: none;
-  border-radius: 999px;
-  background: #2b2823;
-  color: #f3efe8;
-  padding: 10px 20px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  padding: 9px 18px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-button:hover { background: #45413a; }
+button:hover { background: var(--accent-dark); }
+
+button.btn-danger { background: var(--danger); }
+button.btn-danger:hover { background: var(--danger-dark); }
+
+.appbar button {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+}
+.appbar button:hover { background: rgba(255, 255, 255, 0.25); }
 
 /* htmx adds .htmx-request to the element with hx-post while the request is
    in flight - gives immediate feedback that a click registered. */
 .htmx-request button, button.htmx-request {
-  background: #4f8f7b;
+  background: var(--primary);
 }
 
 .welcome-card {
@@ -156,20 +202,20 @@ button:hover { background: #45413a; }
 
 .badge {
   display: inline-block;
-  background: #f2a93d;
-  color: #2b2823;
-  font-weight: 800;
-  font-size: 22px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 500;
+  font-size: 20px;
   letter-spacing: 1px;
   padding: 10px 22px;
-  border-radius: 14px;
+  border-radius: 4px;
   margin: 18px 0;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .status-line {
-  color: #6b6459;
-  font-size: 14px;
+  color: var(--grey-500);
+  font-size: 13px;
   margin-top: 6px;
 }
 
@@ -178,7 +224,7 @@ button:hover { background: #45413a; }
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #4f8f7b;
+  background: var(--accent);
   margin-right: 6px;
   animation: pulse 1.4s ease-in-out infinite;
 }
