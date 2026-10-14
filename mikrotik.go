@@ -3,9 +3,15 @@ package main
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-routeros/routeros/v3"
 )
+
+// dialTimeout bounds how long a stale/unreachable router (e.g. after the
+// home ISP's dynamic IP rotates) hangs a request - without this, a TCP
+// connect to a dead address can block for minutes with no clear error.
+const dialTimeout = 8 * time.Second
 
 // MikroTikClient talks to RouterOS's binary API (ports 8728/8729). Behind an
 // interface so handlers can be tested against a fake without real hardware.
@@ -58,7 +64,7 @@ func loadRouters() (clients map[string]MikroTikClient, defaultName string) {
 // dial opens a fresh connection per call. Traffic volume here (an admin
 // approving guests) is far too low to justify a pooled/persistent client.
 func (c *routerOSClient) dial() (*routeros.Client, error) {
-	return routeros.Dial(c.address, c.user, c.pass)
+	return routeros.DialTimeout(c.address, c.user, c.pass, dialTimeout)
 }
 
 // AuthorizeDevice grants a device internet access immediately, scoped to our
