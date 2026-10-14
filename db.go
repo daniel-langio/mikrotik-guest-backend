@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"time"
 
@@ -145,5 +146,27 @@ func approveSession(db *sql.DB, id int, duration string) error {
 		`UPDATE pending_sessions SET status = 'approved', duration = $1, approved_at = now() WHERE id = $2`,
 		duration, id,
 	)
+	return err
+}
+
+func createAdminSession(db *sql.DB, token string, ttl time.Duration) error {
+	_, err := db.Exec(
+		`INSERT INTO admin_sessions (token, expires_at) VALUES ($1, now() + $2::interval)`,
+		token, fmt.Sprintf("%d seconds", int(ttl.Seconds())),
+	)
+	return err
+}
+
+func validAdminSession(db *sql.DB, token string) bool {
+	var exists bool
+	_ = db.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM admin_sessions WHERE token = $1 AND expires_at > now())`,
+		token,
+	).Scan(&exists)
+	return exists
+}
+
+func deleteAdminSession(db *sql.DB, token string) error {
+	_, err := db.Exec(`DELETE FROM admin_sessions WHERE token = $1`, token)
 	return err
 }

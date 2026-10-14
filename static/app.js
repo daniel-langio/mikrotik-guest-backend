@@ -28,3 +28,28 @@ function tickCountdowns() {
 setInterval(tickCountdowns, 1000);
 document.addEventListener('DOMContentLoaded', tickCountdowns);
 document.addEventListener('htmx:afterSwap', tickCountdowns);
+
+// Toast notifications for admin actions. Works for any htmx-triggered
+// request without per-handler backend changes: success/failure is read off
+// the response itself, only POSTs are announced (GET polling stays silent).
+function showToast(message, isError) {
+  var container = document.getElementById('toast-container');
+  if (!container) return;
+  var el = document.createElement('div');
+  el.className = 'toast ' + (isError ? 'toast-error' : 'toast-success');
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(function () { el.remove(); }, 4000);
+}
+document.addEventListener('htmx:afterRequest', function (e) {
+  var verb = (e.detail.requestConfig && e.detail.requestConfig.verb) || '';
+  if (verb !== 'post') return;
+  if (e.detail.successful) {
+    showToast('Done', false);
+  } else {
+    showToast(e.detail.xhr.responseText || 'Something went wrong', true);
+  }
+});
+document.addEventListener('htmx:sendError', function () {
+  showToast('Network error - could not reach the server', true);
+});
