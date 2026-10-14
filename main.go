@@ -23,7 +23,13 @@ func main() {
 	app := &App{db: db, routers: routers, defaultRouter: defaultRouter}
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	staticFiles := http.StripPrefix("/static/", http.FileServer(http.Dir("static")))
+	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Always revalidate - this app gets redeployed often, and a browser's
+		// default heuristic caching otherwise serves stale CSS/JS silently.
+		w.Header().Set("Cache-Control", "no-cache")
+		staticFiles.ServeHTTP(w, r)
+	}))
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
 	mux.HandleFunc("GET /login", app.loginPage)

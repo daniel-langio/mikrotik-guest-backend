@@ -61,3 +61,18 @@ document.addEventListener('htmx:afterRequest', function (e) {
 document.addEventListener('htmx:sendError', function () {
   showToast('Network error - could not reach the server', true);
 });
+
+// Skip a poll entirely while the admin is actively focused inside that
+// panel (typing a custom duration, etc). hx-preserve only keeps values
+// around post-swap - it still replaces the DOM node, which drops focus
+// every cycle. Skipping the request outright avoids both problems; polling
+// resumes on its own next tick once they click away.
+['pending', 'active'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('htmx:beforeRequest', function (e) {
+    if (el.contains(document.activeElement) && document.activeElement !== document.body) {
+      e.preventDefault();
+    }
+  });
+});
