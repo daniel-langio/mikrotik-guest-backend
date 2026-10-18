@@ -97,7 +97,9 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	// Reuse this device's existing pending/approved session on a refresh,
 	// rather than minting a new GUEST-xxxx account and orphaning whatever
 	// row the admin is currently looking at.
+	os := deviceOS(r.UserAgent())
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
+		setOS(a.db, sess.ID, os)
 		d := a.payData(sess)
 		d["Accepted"] = a.autoGrant(sess)
 		render(w, r, "welcome.html", d)
@@ -108,7 +110,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := "GUEST-" + randSuffix()
-	id, err := insertPending(a.db, mac, ip, username, router)
+	id, err := insertPending(a.db, mac, ip, username, router, os)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -20,6 +20,7 @@ type PendingSession struct {
 	Router     string
 	CreatedAt  time.Time
 	ApprovedAt sql.NullTime
+	OS         string // from the portal request's User-Agent, see deviceOS
 }
 
 // openDB uses the simple protocol: behind a transaction-mode pooler
@@ -34,18 +35,18 @@ func openDB() (*sql.DB, error) {
 	return stdlib.OpenDB(*cfg), nil
 }
 
-func insertPending(db *sql.DB, mac, ip, username, router string) (int, error) {
+func insertPending(db *sql.DB, mac, ip, username, router, os string) (int, error) {
 	var id int
 	err := db.QueryRow(
-		`INSERT INTO pending_sessions (mac_address, ip_address, username, router) VALUES ($1, $2, $3, $4) RETURNING id`,
-		mac, ip, username, router,
+		`INSERT INTO pending_sessions (mac_address, ip_address, username, router, os) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		mac, ip, username, router, os,
 	).Scan(&id)
 	return id, err
 }
 
 func listPending(db *sql.DB) ([]PendingSession, error) {
 	rows, err := db.Query(
-		`SELECT id, mac_address, ip_address, username, status, duration, router, created_at, approved_at
+		`SELECT id, mac_address, ip_address, username, status, duration, router, created_at, approved_at, COALESCE(os, '')
 		 FROM pending_sessions WHERE status = 'pending' ORDER BY created_at`,
 	)
 	if err != nil {
@@ -56,7 +57,7 @@ func listPending(db *sql.DB) ([]PendingSession, error) {
 	var sessions []PendingSession
 	for rows.Next() {
 		var s PendingSession
-		if err := rows.Scan(&s.ID, &s.MACAddress, &s.IPAddress, &s.Username, &s.Status, &s.Duration, &s.Router, &s.CreatedAt, &s.ApprovedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.MACAddress, &s.IPAddress, &s.Username, &s.Status, &s.Duration, &s.Router, &s.CreatedAt, &s.ApprovedAt, &s.OS); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
@@ -110,11 +111,12 @@ type ApprovedSession struct {
 	MACAddress string
 	Router     string
 	ExpiresAt  time.Time
+	OS         string
 }
 
 func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	rows, err := db.Query(
-		`SELECT id, username, mac_address, router, approved_at + duration::interval AS expires_at
+		`SELECT id, username, mac_address, router, approved_at + duration::interval AS expires_at, COALESCE(os, '')
 		 FROM pending_sessions WHERE status = 'approved' ORDER BY approved_at`,
 	)
 	if err != nil {
@@ -125,7 +127,7 @@ func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	var sessions []ApprovedSession
 	for rows.Next() {
 		var s ApprovedSession
-		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.ExpiresAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.ExpiresAt, &s.OS); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
@@ -241,4 +243,12 @@ func setOpenDuration(db *sql.DB, d string) error {
 func clearOpen(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM settings WHERE key = 'open_duration'`)
 	return err
+}
+
+// setOS refreshes a session's OS when a later request tells us more (e.g. the
+// real browser after the captive-portal mini browser).
+func setOS(db *sql.DB, id int, os string) {
+	if os != "" {
+		db.Exec(`UPDATE pending_sessions SET os = $1 WHERE id = $2`, os, id)
+	}
 }
