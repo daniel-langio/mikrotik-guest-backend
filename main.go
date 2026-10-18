@@ -22,35 +22,7 @@ func main() {
 	}
 	app := &App{db: db, routers: routers, defaultRouter: defaultRouter, ifay: ifayFromEnv()}
 
-	mux := http.NewServeMux()
-	staticFiles := http.StripPrefix("/static/", http.FileServer(http.Dir("static")))
-	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Always revalidate - this app gets redeployed often, and a browser's
-		// default heuristic caching otherwise serves stale CSS/JS silently.
-		w.Header().Set("Cache-Control", "no-cache")
-		staticFiles.ServeHTTP(w, r)
-	}))
-	mux.HandleFunc("POST /lang", app.setLang)
-	mux.HandleFunc("GET /help", app.help)
-	mux.HandleFunc("GET /welcome", app.welcome)
-	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
-	mux.HandleFunc("GET /welcome/redirect", app.welcomeRedirect)
-	mux.HandleFunc("POST /welcome/pay/{id}", app.pay)
-	mux.HandleFunc("GET /welcome/pay/{id}/form", app.payForm)
-	mux.HandleFunc("GET /login", app.loginPage)
-	mux.HandleFunc("POST /login", app.login)
-	mux.HandleFunc("POST /logout", app.logout)
-	mux.HandleFunc("GET /admin", app.requireAuth(app.adminPage))
-	mux.HandleFunc("GET /admin/pending", app.requireAuth(app.adminPending))
-	mux.HandleFunc("GET /admin/active", app.requireAuth(app.adminActive))
-	mux.HandleFunc("GET /admin/users", app.requireAdmin(app.adminUsers))
-	mux.HandleFunc("POST /admin/users", app.requireAdmin(app.adminCreateUser))
-	mux.HandleFunc("POST /admin/users/delete/{username}", app.requireAdmin(app.adminDeleteUser))
-	mux.HandleFunc("GET /admin/history", app.requireAdmin(app.adminHistory))
-	mux.HandleFunc("POST /admin/pending/delete/{id}", app.requireAuth(app.adminDeletePending))
-	mux.HandleFunc("POST /admin/pending/clear", app.requireAuth(app.adminClearPending))
-	mux.HandleFunc("POST /admin/approve/{id}", app.requireAuth(app.approve))
-	mux.HandleFunc("POST /admin/disconnect/{id}", app.requireAuth(app.adminDisconnect))
+	mux := app.routes()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -80,4 +52,37 @@ func loadEnvFile(path string) {
 			os.Setenv(k, v)
 		}
 	}
+}
+
+func (a *App) routes() *http.ServeMux {
+	mux := http.NewServeMux()
+	staticFiles := http.StripPrefix("/static/", http.FileServer(http.Dir("static")))
+	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Always revalidate - this app gets redeployed often, and a browser's
+		// default heuristic caching otherwise serves stale CSS/JS silently.
+		w.Header().Set("Cache-Control", "no-cache")
+		staticFiles.ServeHTTP(w, r)
+	}))
+	mux.HandleFunc("POST /lang", a.setLang)
+	mux.HandleFunc("GET /help", a.help)
+	mux.HandleFunc("GET /welcome", a.welcome)
+	mux.HandleFunc("GET /welcome/status/{id}", a.welcomeStatus)
+	mux.HandleFunc("GET /welcome/redirect", a.welcomeRedirect)
+	mux.HandleFunc("POST /welcome/pay/{id}", a.pay)
+	mux.HandleFunc("GET /welcome/pay/{id}/form", a.payForm)
+	mux.HandleFunc("GET /login", a.loginPage)
+	mux.HandleFunc("POST /login", a.login)
+	mux.HandleFunc("POST /logout", a.logout)
+	mux.HandleFunc("GET /admin", a.requireAuth(a.adminPage))
+	mux.HandleFunc("GET /admin/pending", a.requireAuth(a.adminPending))
+	mux.HandleFunc("GET /admin/active", a.requireAuth(a.adminActive))
+	mux.HandleFunc("GET /admin/users", a.requireAdmin(a.adminUsers))
+	mux.HandleFunc("POST /admin/users", a.requireAdmin(a.adminCreateUser))
+	mux.HandleFunc("POST /admin/users/delete/{username}", a.requireAdmin(a.adminDeleteUser))
+	mux.HandleFunc("GET /admin/history", a.requireAdmin(a.adminHistory))
+	mux.HandleFunc("POST /admin/pending/delete/{id}", a.requireAuth(a.adminDeletePending))
+	mux.HandleFunc("POST /admin/pending/clear", a.requireAuth(a.adminClearPending))
+	mux.HandleFunc("POST /admin/approve/{id}", a.requireAuth(a.approve))
+	mux.HandleFunc("POST /admin/disconnect/{id}", a.requireAuth(a.adminDisconnect))
+	return mux
 }
