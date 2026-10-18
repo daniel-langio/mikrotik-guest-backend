@@ -168,6 +168,7 @@ var dict = map[string]map[string]string{
 		"service.guest_title": "Service désactivé par l'admin",
 		"service.guest_text":  "La connexion est temporairement indisponible. En attendant, regardez une vidéo :",
 		"service.router_warn": "Routeur injoignable : %s - la liste blanche YouTube n'a pas été mise à jour.",
+		"service.watch_yt":    "Regarder sur YouTube",
 	},
 	"mg": {
 		"welcome.title":       "Tongasoa",
@@ -326,6 +327,7 @@ var dict = map[string]map[string]string{
 		"service.guest_title": "Serivisy novonoin'ny mpitantana",
 		"service.guest_text":  "Tsy azo atao ny fifandraisana ankehitriny. Mandritra izay, jereo video:",
 		"service.router_warn": "Tsy tafiditra ny routeur: %s - tsy nohavaozina ny lisitry ny YouTube.",
+		"service.watch_yt":    "Jereo ao amin'ny YouTube",
 	},
 }
 
@@ -360,6 +362,7 @@ func tr(lang, key string, args ...any) string {
 // base set is cloned per request (it's tiny) because FuncMap is per template set.
 func render(w http.ResponseWriter, r *http.Request, name string, data any) {
 	lang := langOf(r)
+	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	t, err := tmpl.Clone()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

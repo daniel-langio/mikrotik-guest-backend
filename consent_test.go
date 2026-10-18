@@ -41,7 +41,11 @@ func TestServiceDisabledScreen(t *testing.T) {
 	w := httptest.NewRecorder()
 	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
 	b := html.UnescapeString(w.Body.String())
-	for _, want := range []string{"Service désactivé par l'admin", "youtube-nocookie.com/embed/YE7VzlLtp-4", "status/7?g=1"} {
+	if h := w.Header().Get("Referrer-Policy"); h != "strict-origin-when-cross-origin" {
+		t.Errorf("Referrer-Policy = %q (YouTube error 153 without a Referer)", h)
+	}
+	for _, want := range []string{"Service désactivé par l'admin", "youtube-nocookie.com/embed/YE7VzlLtp-4", "status/7?g=1",
+		`referrerpolicy="strict-origin-when-cross-origin"`, "https://www.youtube.com/watch?v=YE7VzlLtp-4", "Regarder sur YouTube"} {
 		if !strings.Contains(b, want) {
 			t.Errorf("disabled screen missing %q", want)
 		}
