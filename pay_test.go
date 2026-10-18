@@ -72,3 +72,28 @@ func TestPasswordHash(t *testing.T) {
 		t.Fatal("password hash roundtrip failed")
 	}
 }
+
+func TestRefFormats(t *testing.T) {
+	ok := map[string][]string{
+		"ORANGE_MONEY": {"PP260901.0939.A53909", "CI260906.1809.C62778", "MP260828.1613.B24907"},
+		"MVOLA":        {"2041371096", "598646137", "325210465"},
+	}
+	bad := map[string][]string{
+		"ORANGE_MONEY": {"0", "1", "REF", "TEST", "TEST-CHIPS", "598646137"},
+		"MVOLA":        {"0", "90", "TEST", "PP260901.0939.A53909"},
+	}
+	for p, refs := range ok {
+		for _, r := range refs {
+			if !refFormats[p].MatchString(r) {
+				t.Errorf("%s %q rejected", p, r)
+			}
+		}
+	}
+	for p, refs := range bad {
+		for _, r := range refs {
+			if refFormats[p].MatchString(r) {
+				t.Errorf("%s %q accepted", p, r)
+			}
+		}
+	}
+}

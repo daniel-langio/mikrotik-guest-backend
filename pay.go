@@ -42,6 +42,15 @@ func normalizePhone(s string) (string, bool) {
 	return s, e164.MatchString(s)
 }
 
+// refFormats are the real Transaction-ID shapes per provider. ifay keeps a
+// claim VERIFIED when its ref was already verified, and this receiver number
+// also holds test/manual payments with refs like "0", "1" or "REF" - without a
+// shape check a guest could claim one of those for instant free access.
+var refFormats = map[string]*regexp.Regexp{
+	"ORANGE_MONEY": regexp.MustCompile(`^[A-Z]{2}\d{6}\.\d{4}\.[A-Z]\d{5}$`),
+	"MVOLA":        regexp.MustCompile(`^\d{8,12}$`),
+}
+
 func (a *App) payData(sess PendingSession) map[string]any {
 	d := map[string]any{"ID": sess.ID, "Username": sess.Username, "Price": pricePerUnit, "Mins": minsPerUnit,
 		"Max": maxAmount}
@@ -100,8 +109,8 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ref := strings.ToUpper(strings.TrimSpace(r.FormValue("ref")))
-	if ref == "" {
-		fail("Enter the payment reference")
+	if !refFormats[provider].MatchString(ref) {
+		fail("That doesn't look like a " + map[string]string{"MVOLA": "MVola", "ORANGE_MONEY": "Orange Money"}[provider] + " reference - copy it from the confirmation SMS")
 		return
 	}
 
