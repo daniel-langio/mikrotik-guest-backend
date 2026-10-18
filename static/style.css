@@ -257,3 +257,9 @@ form.pay-form {
 }
 .pay-form label { text-align: left; font-size: 13px; color: var(--grey-500); }
 .pay-form input, .pay-form select { width: 100%; box-sizing: border-box; margin-top: 4px; }
+
+.accepted { font-size: 20px; font-weight: 500; color: #2e7d32; margin: 8px 0; }
+.accepted .check {
+  display: inline-block; width: 28px; height: 28px; line-height: 28px; margin-right: 8px;
+  border-radius: 50%; background: #2e7d32; color: #fff; font-size: 17px;
+}

@@ -32,6 +32,7 @@ func main() {
 	}))
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
+	mux.HandleFunc("GET /welcome/redirect", app.welcomeRedirect)
 	mux.HandleFunc("POST /welcome/pay/{id}", app.pay)
 	mux.HandleFunc("GET /welcome/pay/{id}/form", app.payForm)
 	mux.HandleFunc("GET /login", app.loginPage)

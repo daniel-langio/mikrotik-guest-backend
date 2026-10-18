@@ -1,4 +1,9 @@
-{{if .Waiting}}
+{{if .Accepted}}
+<p class="accepted"><span class="check">&#10003;</span>{{if .Ref}}Payment accepted{{else}}Approved{{end}}</p>
+<p class="status-line">You're connected - redirecting&hellip;</p>
+<div id="poller" hx-swap-oob="delete"></div>
+<div hx-get="/welcome/redirect" hx-trigger="load delay:2s" hx-swap="none"></div>
+{{else if .Waiting}}
 <p class="status-line"><span class="pulse"></span>Checking payment <b>{{.Ref}}</b>&hellip;</p>
 <p class="status-line">You'll be connected automatically once it's confirmed - no need to refresh.</p>
 <p><button type="button" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">Wrong reference?</button></p>

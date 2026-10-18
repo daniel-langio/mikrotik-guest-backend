@@ -16,6 +16,6 @@
       <div id="pay">{{template "pay.html" .}}</div>
     </div>
   </div>
-  <div hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-swap="none"></div>
+  <div id="poller" hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>
 </body>
 </html>

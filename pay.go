@@ -136,10 +136,11 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if p.Status == "VERIFIED" {
-		a.grant(sess, duration)
+	d = a.payData(sess)
+	if p.Status == "VERIFIED" && a.grant(sess, duration) == nil {
+		d["Accepted"] = true
 	}
-	tmpl.ExecuteTemplate(w, "pay.html", a.payData(sess))
+	tmpl.ExecuteTemplate(w, "pay.html", d)
 }
 
 // grant authorizes the device and marks the session approved. Safe to call

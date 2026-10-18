@@ -99,8 +99,9 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 }
 
 // welcomeStatus is polled by the guest's own welcome page. Once an admin
-// approves the session (or the guest's Mobile Money claim verifies), it tells htmx to redirect the browser (HX-Redirect)
-// instead of swapping any content - the guest never has to do anything.
+// approves the session (or the guest's Mobile Money claim verifies), it swaps
+// in an "accepted" message, which then triggers the redirect; until then it
+// answers 204 so nothing on the page changes.
 func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -113,8 +114,18 @@ func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sess.Status == "approved" || a.checkClaim(sess) {
-		w.Header().Set("HX-Redirect", redirectURL())
+		d := a.payData(sess)
+		d["Accepted"] = true
+		tmpl.ExecuteTemplate(w, "pay.html", d)
+		return
 	}
+	w.WriteHeader(http.StatusNoContent) // htmx leaves #pay untouched on 204
+}
+
+// welcomeRedirect is hit a couple of seconds after the "accepted" feedback is
+// shown, so the guest sees the confirmation before leaving the portal.
+func (a *App) welcomeRedirect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("HX-Redirect", redirectURL())
 }
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
