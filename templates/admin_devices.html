@@ -1,7 +1,7 @@
 <div class="card">
 {{range .}}
   <div class="item">
-    <div class="name"><span class="dot dot-{{.Event}}"></span>{{.Username}} &middot; {{if eq .Event "pending"}}{{t "ev.pending"}}{{else if eq .Event "approved"}}{{t "ev.approved"}}{{else if eq .Event "expired"}}{{t "ev.expired"}}{{else if eq .Event "disconnected"}}{{t "ev.disconnected"}}{{else}}{{t "ev.deleted"}}{{end}}{{if .Actor}} <span class="meta">({{if eq .Actor "payment"}}{{t "by.payment"}}{{else if eq .Actor "open"}}{{t "by.open"}}{{else if eq .Actor "expiry"}}{{t "by.expiry"}}{{else}}{{.Actor}}{{end}})</span>{{end}}</div>
+    <div class="name"><span class="dot dot-{{.Event}}"></span>{{.Username}} &middot; {{if eq .Event "pending"}}{{t "ev.pending"}}{{else if eq .Event "approved"}}{{t "ev.approved"}}{{else if eq .Event "expired"}}{{t "ev.expired"}}{{else if eq .Event "disconnected"}}{{t "ev.disconnected"}}{{else if eq .Event "consent"}}{{t "ev.consent"}}{{else if eq .Event "withdrawn"}}{{t "ev.withdrawn"}}{{else}}{{t "ev.deleted"}}{{end}}{{if .Actor}} <span class="meta">({{if eq .Actor "payment"}}{{t "by.payment"}}{{else if eq .Actor "open"}}{{t "by.open"}}{{else if eq .Actor "expiry"}}{{t "by.expiry"}}{{else}}{{.Actor}}{{end}})</span>{{end}}</div>
     <div class="meta"><span class="localtime" data-iso="{{.At.Format "2006-01-02T15:04:05Z07:00"}}">{{.At.Format "15:04:05"}}</span> &middot; {{.Router}} &middot; {{if .OS}}{{.OS}} &middot; {{end}}{{if .Hostname}}{{.Hostname}} &middot; {{end}}{{.MAC}} &middot; {{.IP}}{{if .Ref}} &middot; {{.Provider}} {{.Ref}} {{.Amount}} Ar{{end}}{{if .Duration}} &middot; {{.Duration}}{{end}}</div>
   </div>
 {{else}}

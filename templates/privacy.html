@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+  <title>Aphrodite · {{t "privacy.title"}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v={{v}}">
+</head>
+<body>
+  <div class="page">
+    <div class="card welcome-card consent">
+      <h1>{{t "privacy.title"}}</h1>
+      {{if .Withdrawn}}
+        <p class="accepted">{{t "privacy.withdrawn"}}</p>
+      {{else}}
+        <p class="consent-lead">{{t "consent.lead"}}</p>
+        <ul>
+          <li>{{t "consent.item1"}}</li>
+          <li>{{t "consent.item2"}}</li>
+          <li>{{t "consent.item3"}}</li>
+          <li>{{t "consent.item4"}}</li>
+        </ul>
+        <p class="consent-not">{{t "consent.not"}}</p>
+        <p>{{t "consent.why"}}</p>
+        <p>{{t "consent.keep" .Retention}}</p>
+        <p>{{t "privacy.legal"}}</p>
+        <p>{{t "consent.rights"}}</p>
+        {{if .Contact}}<p>{{t "consent.contact" .Contact}}</p>{{end}}
+        <p class="meta">{{t "privacy.version"}} {{.Version}}</p>
+        {{if .SessionID}}
+        <form method="post" action="/consent/withdraw">
+          <input type="hidden" name="s" value="{{.SessionID}}">
+          <input type="hidden" name="mac" value="{{.MAC}}">
+          <button type="submit" class="btn-danger">{{t "privacy.withdraw"}}</button>
+        </form>
+        {{end}}
+      {{end}}
+      <p><button type="button" onclick="history.length > 1 ? history.back() : (location.href = '/')">{{t "help.back"}}</button></p>
+      <div class="lang-wrap">{{template "langswitch.html"}}</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -57,8 +58,13 @@ func (a *App) payData(sess PendingSession) map[string]any {
 	if a.ifay != nil {
 		d["Receiver"] = a.ifay.receiver
 	}
+	hasClaim := false
 	if ref, claimID, _, err := getClaim(a.db, sess.ID); err == nil && claimID != "" {
-		d["Waiting"], d["Ref"] = true, ref
+		d["Waiting"], d["Ref"], hasClaim = true, ref, true
+	}
+	d["MAC"], d["Retention"], d["Contact"] = sess.MACAddress, retentionDays(), os.Getenv("PRIVACY_CONTACT")
+	if a.needsConsent(sess, hasClaim) {
+		d["NeedConsent"] = true
 	}
 	return d
 }
@@ -72,6 +78,7 @@ func (a *App) payForm(w http.ResponseWriter, r *http.Request) {
 	}
 	d := a.payData(sess)
 	delete(d, "Waiting")
+	delete(d, "NeedConsent") // chose to pay instead of consenting
 	d["ShowForm"] = true
 	render(w, r, "pay.html", d)
 }
@@ -86,6 +93,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := a.payData(sess)
+	delete(d, "NeedConsent")
 	d["FPhone"], d["FRef"] = r.FormValue("phone"), r.FormValue("ref")
 	lang := langOf(r)
 	fail := func(msg string) {

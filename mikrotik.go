@@ -1,7 +1,9 @@
 package main
 
 import (
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +32,16 @@ type MikroTikClient interface {
 	AuthorizeDevice(mac string) error
 	DeauthorizeDevice(mac string) error
 	LeaseInfo(mac string) (Lease, error)
+	Connections() ([]Conn, error)
+	DNSNames() (map[string]string, error)
+	OnlineMACs() (map[string]bool, error)
+}
+
+// Conn is one entry of the router's connection-tracking table.
+type Conn struct {
+	Proto, SrcIP, DstIP string
+	SrcPort, DstPort    int
+	Up, Down            int64 // bytes originator -> peer, peer -> originator
 }
 
 // Lease is what the router's DHCP server knows about a device.
@@ -138,4 +150,87 @@ func (c *routerOSClient) LeaseInfo(mac string) (Lease, error) {
 		l.Vendor = m["active-class-id"]
 	}
 	return l, nil
+}
+
+// parseAddr splits RouterOS's "ip:port" (port absent for icmp).
+func parseAddr(s string) (ip string, port int) {
+	host, p, err := net.SplitHostPort(s)
+	if err != nil {
+		return s, 0
+	}
+	port, _ = strconv.Atoi(p)
+	return host, port
+}
+
+// Connections returns the router's whole connection table.
+func (c *routerOSClient) Connections() ([]Conn, error) {
+	client, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/ip/firewall/connection/print",
+		"=.proplist=protocol,src-address,dst-address,orig-bytes,repl-bytes")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Conn, 0, len(reply.Re))
+	for _, re := range reply.Re {
+		m := re.Map
+		cn := Conn{Proto: m["protocol"]}
+		cn.SrcIP, cn.SrcPort = parseAddr(m["src-address"])
+		cn.DstIP, cn.DstPort = parseAddr(m["dst-address"])
+		cn.Up, _ = strconv.ParseInt(m["orig-bytes"], 10, 64)
+		cn.Down, _ = strconv.ParseInt(m["repl-bytes"], 10, 64)
+		out = append(out, cn)
+	}
+	return out, nil
+}
+
+// DNSNames maps IPv4 address -> name from the router's DNS cache, to put
+// domain names on connections (best effort: the cache is shared by all clients).
+func (c *routerOSClient) DNSNames() (map[string]string, error) {
+	client, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/ip/dns/cache/print", "=.proplist=name,type,data")
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]string{}
+	for _, re := range reply.Re {
+		if re.Map["type"] == "A" && re.Map["data"] != "" {
+			names[re.Map["data"]] = re.Map["name"]
+		}
+	}
+	return names, nil
+}
+
+// OnlineMACs returns the MACs the router currently sees on the guest network
+// (ARP table plus hotspot host table, upper-cased). A device that left or
+// went to sleep long enough drops out of both.
+func (c *routerOSClient) OnlineMACs() (map[string]bool, error) {
+	client, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	macs := map[string]bool{}
+	for _, cmd := range []string{"/ip/arp/print", "/ip/hotspot/host/print"} {
+		reply, err := client.Run(cmd, "=.proplist=mac-address")
+		if err != nil {
+			return nil, err
+		}
+		for _, re := range reply.Re {
+			if m := re.Map["mac-address"]; m != "" {
+				macs[strings.ToUpper(m)] = true
+			}
+		}
+	}
+	return macs, nil
 }

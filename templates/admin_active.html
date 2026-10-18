@@ -3,7 +3,7 @@
   <div class="item">
     <div class="row">
       <div>
-        <div class="name"><span class="dot"></span>{{.Username}}</div>
+        <div class="name"><span class="dot dot-{{.State}}" title="{{.State}}"></span>{{.Username}}</div>
         <div class="meta">{{.Router}} &middot; {{if .OS}}{{.OS}} &middot; {{end}}{{if .Hostname}}{{.Hostname}} &middot; {{end}}{{.MACAddress}}</div>
       </div>
       <div class="row">

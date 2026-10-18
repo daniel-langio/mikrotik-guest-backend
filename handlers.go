@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,7 +21,8 @@ import (
 var buildVersion = fmt.Sprintf("%d", time.Now().Unix())
 
 var tmpl = template.Must(template.New("").Funcs(template.FuncMap{
-	"v": func() string { return buildVersion },
+	"v":     func() string { return buildVersion },
+	"bytes": humanBytes,
 	// placeholders so the templates parse; render() rebinds them per request
 	"t":    func(key string, args ...any) string { return key },
 	"lang": func() string { return defaultLang },
@@ -143,6 +145,12 @@ func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 		render(w, r, "pay.html", d)
 		return
 	}
+	// The page was drawn with or without the consent gate (g); if the portal
+	// opened or closed since, reload once so the guest sees the right screen.
+	_, claimID, _, _ := getClaim(a.db, sess.ID)
+	if sess.Status == "pending" && a.needsConsent(sess, claimID != "") != (r.URL.Query().Get("g") == "1") {
+		w.Header().Set("HX-Refresh", "true")
+	}
 	w.WriteHeader(http.StatusNoContent) // htmx leaves #pay untouched on 204
 }
 
@@ -176,7 +184,7 @@ func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sessions, err := listApproved(a.db)
+	sessions, err := a.activeSessions()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -203,7 +211,7 @@ func (a *App) adminDisconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := listApproved(a.db)
+	sessions, err := a.activeSessions()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -254,10 +262,12 @@ func (a *App) help(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "help.html", d)
 }
 
-// autoGrant approves a pending session on the spot while the portal is open.
+// autoGrant approves a pending session on the spot while the portal is open -
+// but only once the guest has consented to activity recording (free access is
+// given in exchange for it, see consent.go).
 func (a *App) autoGrant(sess PendingSession) bool {
 	d, _, open := getOpen(a.db)
-	return open && sess.Status == "pending" && a.grant(sess, d, "open") == nil
+	return open && sess.Status == "pending" && hasConsent(a.db, sess.ID) && a.grant(sess, d, "open") == nil
 }
 
 func (a *App) renderOpen(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +283,8 @@ func (a *App) adminOpen(w http.ResponseWriter, r *http.Request) {
 	a.renderOpen(w, r)
 }
 
-// adminOpenOn opens the portal and approves everyone already waiting.
+// adminOpenOn opens the portal. Waiting guests are not approved: each one must
+// first accept the activity-recording notice (their page reloads to show it).
 func (a *App) adminOpenOn(w http.ResponseWriter, r *http.Request) {
 	duration, ok := formDuration(r)
 	if !ok {
@@ -297,11 +308,6 @@ func (a *App) adminOpenOn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if pending, err := listPending(a.db); err == nil {
-		for _, p := range pending {
-			a.grant(p, duration, "open") // a router error leaves that guest pending
-		}
-	}
 	a.renderOpen(w, r)
 }
 
@@ -318,5 +324,61 @@ func (a *App) adminOpenOff(w http.ResponseWriter, r *http.Request) {
 func (a *App) fetchLease(id int, router, mac string) {
 	if l, err := a.router(router).LeaseInfo(mac); err == nil && (l.Hostname != "" || l.Vendor != "") {
 		setLease(a.db, id, l)
+	}
+}
+
+// activeSessions lists approved sessions and marks whether each device is
+// still on the network. One router query per router, in parallel and bounded
+// to 3s so a dead router can't stall the dashboard poll; a router that
+// doesn't answer leaves its devices "unknown", never wrongly "offline".
+func (a *App) activeSessions() ([]ApprovedSession, error) {
+	sessions, err := listApproved(a.db)
+	if err != nil || len(sessions) == 0 {
+		return sessions, err
+	}
+	type res struct {
+		router string
+		macs   map[string]bool
+	}
+	names := map[string]bool{}
+	for _, s := range sessions {
+		names[s.Router] = true
+	}
+	ch := make(chan res, len(names))
+	for name := range names {
+		go func(name string) {
+			macs, err := a.router(name).OnlineMACs()
+			if err != nil {
+				macs = nil
+			}
+			ch <- res{name, macs}
+		}(name)
+	}
+	sets := map[string]map[string]bool{}
+	deadline := time.After(3 * time.Second)
+	for range names {
+		select {
+		case r := <-ch:
+			sets[r.router] = r.macs
+		case <-deadline:
+		}
+	}
+	markOnline(sessions, sets)
+	return sessions, nil
+}
+
+// markOnline sets each session's State from its router's set of present MACs
+// (nil/missing set = router unreachable = unknown).
+func markOnline(sessions []ApprovedSession, sets map[string]map[string]bool) {
+	for i := range sessions {
+		set := sets[sessions[i].Router]
+		switch {
+		case set == nil:
+			sessions[i].State = "unknown"
+		case set[strings.ToUpper(sessions[i].MACAddress)]:
+			sessions[i].State = "online"
+		default:
+			sessions[i].State = "offline"
+		}
 	}
 }

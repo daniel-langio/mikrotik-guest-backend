@@ -22,6 +22,7 @@ func main() {
 	}
 	app := &App{db: db, routers: routers, defaultRouter: defaultRouter, ifay: ifayFromEnv()}
 
+	go app.collectLoop()
 	mux := app.routes()
 
 	port := os.Getenv("PORT")
@@ -67,6 +68,11 @@ func (a *App) routes() *http.ServeMux {
 	mux.HandleFunc("GET /help", a.help)
 	mux.HandleFunc("GET /welcome", a.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", a.welcomeStatus)
+	mux.HandleFunc("POST /welcome/consent/{id}", a.welcomeConsent)
+	mux.HandleFunc("GET /privacy", a.privacy)
+	mux.HandleFunc("POST /consent/withdraw", a.consentWithdraw)
+	mux.HandleFunc("GET /admin/activity", a.requireAdmin(a.adminActivity))
+	mux.HandleFunc("GET /admin/activity.csv", a.requireAdmin(a.adminActivityCSV))
 	mux.HandleFunc("GET /welcome/redirect", a.welcomeRedirect)
 	mux.HandleFunc("POST /welcome/pay/{id}", a.pay)
 	mux.HandleFunc("GET /welcome/pay/{id}/form", a.payForm)

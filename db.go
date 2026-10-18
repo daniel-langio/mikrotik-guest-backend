@@ -127,6 +127,7 @@ type ApprovedSession struct {
 	ExpiresAt  time.Time
 	OS         string
 	Hostname   string
+	State      string // online | offline | unknown, from the router, see activeSessions
 }
 
 func listApproved(db *sql.DB) ([]ApprovedSession, error) {
