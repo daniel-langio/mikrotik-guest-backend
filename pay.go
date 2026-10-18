@@ -122,6 +122,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		fail("Could not check the payment, try again: " + err.Error())
 		return
 	}
+	recordClaim(a.db, p.ID)
 	if err := setClaimID(a.db, id, p.ID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

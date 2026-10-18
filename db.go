@@ -196,6 +196,10 @@ func setClaimID(db *sql.DB, id int, claimID string) error {
 	return err
 }
 
+func recordClaim(db *sql.DB, ifayID string) {
+	db.Exec(`INSERT INTO claims (ifay_id) VALUES ($1) ON CONFLICT DO NOTHING`, ifayID)
+}
+
 func clearClaim(db *sql.DB, id int) {
 	db.Exec(`UPDATE pending_sessions SET provider = NULL, psp_ref = NULL, amount = NULL, claim_id = NULL WHERE id = $1`, id)
 }
