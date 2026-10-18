@@ -324,3 +324,6 @@ button.btn-secondary { background: var(--grey-500); }
 
 .dot-offline { background: #c0392b; }
 .dot-unknown { background: var(--grey-500); }
+
+.pager { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.pager button { padding: 6px 14px; }

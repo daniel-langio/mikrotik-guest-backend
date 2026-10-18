@@ -41,14 +41,14 @@ type DeviceEvent struct {
 }
 
 // listDeviceEvents returns newest first; limit <= 0 means everything.
-func listDeviceEvents(db *sql.DB, limit int) ([]DeviceEvent, error) {
+func listDeviceEvents(db *sql.DB, limit, offset int) ([]DeviceEvent, error) {
 	q := `SELECT at, event, actor, COALESCE(session_id, 0), mac_address, COALESCE(ip_address, ''), COALESCE(username, ''),
 		COALESCE(router, ''), COALESCE(os, ''), COALESCE(user_agent, ''), COALESCE(hostname, ''), COALESCE(vendor_class, ''), COALESCE(provider, ''), COALESCE(psp_ref, ''),
 		COALESCE(amount, 0), COALESCE(duration, '') FROM device_history ORDER BY at DESC, id DESC`
 	var args []any
 	if limit > 0 {
-		q += ` LIMIT $1`
-		args = append(args, limit)
+		q += ` LIMIT $1 OFFSET $2`
+		args = append(args, limit, offset)
 	}
 	rows, err := db.Query(q, args...)
 	if err != nil {
@@ -68,12 +68,14 @@ func listDeviceEvents(db *sql.DB, limit int) ([]DeviceEvent, error) {
 }
 
 func (a *App) adminDevices(w http.ResponseWriter, r *http.Request) {
-	events, err := listDeviceEvents(a.db, 200)
+	page := pageParam(r)
+	events, err := listDeviceEvents(a.db, pageSize+1, (page-1)*pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, r, "admin_devices.html", events)
+	data, _ := pageRows(events, "/admin/devices", page)
+	render(w, r, "admin_devices.html", data)
 }
 
 func writeDeviceCSV(w io.Writer, events []DeviceEvent) error {
@@ -88,7 +90,7 @@ func writeDeviceCSV(w io.Writer, events []DeviceEvent) error {
 }
 
 func (a *App) adminDevicesCSV(w http.ResponseWriter, r *http.Request) {
-	events, err := listDeviceEvents(a.db, 0)
+	events, err := listDeviceEvents(a.db, 0, 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

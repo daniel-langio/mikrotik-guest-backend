@@ -131,13 +131,13 @@ type ActivityRow struct {
 	Up, Down                     int64
 }
 
-func listActivity(db *sql.DB, limit int) ([]ActivityRow, error) {
+func listActivity(db *sql.DB, limit, offset int) ([]ActivityRow, error) {
 	q := `SELECT last_seen, first_seen, COALESCE(username, ''), mac_address, router, COALESCE(proto, ''), COALESCE(dst_ip, ''),
 		COALESCE(domain, ''), COALESCE(dst_port, 0), bytes_up, bytes_down FROM activity_log ORDER BY last_seen DESC, id DESC`
 	var args []any
 	if limit > 0 {
-		q += ` LIMIT $1`
-		args = append(args, limit)
+		q += ` LIMIT $1 OFFSET $2`
+		args = append(args, limit, offset)
 	}
 	rows, err := db.Query(q, args...)
 	if err != nil {
@@ -156,16 +156,18 @@ func listActivity(db *sql.DB, limit int) ([]ActivityRow, error) {
 }
 
 func (a *App) adminActivity(w http.ResponseWriter, r *http.Request) {
-	rows, err := listActivity(a.db, 200)
+	page := pageParam(r)
+	rows, err := listActivity(a.db, pageSize+1, (page-1)*pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, r, "admin_activity.html", rows)
+	data, _ := pageRows(rows, "/admin/activity", page)
+	render(w, r, "admin_activity.html", data)
 }
 
 func (a *App) adminActivityCSV(w http.ResponseWriter, r *http.Request) {
-	rows, err := listActivity(a.db, 0)
+	rows, err := listActivity(a.db, 0, 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

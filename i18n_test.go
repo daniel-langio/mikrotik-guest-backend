@@ -197,7 +197,7 @@ func TestDeviceCSVAndPanel(t *testing.T) {
 		}
 	}
 	w := httptest.NewRecorder()
-	render(w, httptest.NewRequest("GET", "/admin/devices", nil), "admin_devices.html", ev)
+	render(w, httptest.NewRequest("GET", "/admin/devices", nil), "admin_devices.html", map[string]any{"Rows": ev, "Pager": Pager{Base: "/admin/devices", Page: 1}})
 	for _, want := range []string{"GUEST-X", "approuvé", "paiement", "Demo-Phone", "ORANGE_MONEY"} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Errorf("panel missing %q", want)

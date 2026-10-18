@@ -87,9 +87,9 @@ func recordLogin(db *sql.DB, username string, success bool, ip, ua string) {
 		username, success, ip, ua)
 }
 
-func listLogins(db *sql.DB) ([]Login, error) {
+func listLogins(db *sql.DB, limit, offset int) ([]Login, error) {
 	rows, err := db.Query(`SELECT username, success, COALESCE(ip, ''), COALESCE(user_agent, ''), at
-		FROM login_history ORDER BY at DESC LIMIT 100`)
+		FROM login_history ORDER BY at DESC LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -172,12 +172,14 @@ func (a *App) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) adminHistory(w http.ResponseWriter, r *http.Request) {
-	logins, err := listLogins(a.db)
+	page := pageParam(r)
+	logins, err := listLogins(a.db, pageSize+1, (page-1)*pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, r, "admin_history.html", logins)
+	data, _ := pageRows(logins, "/admin/history", page)
+	render(w, r, "admin_history.html", data)
 }
 
 func (a *App) adminDeletePending(w http.ResponseWriter, r *http.Request) {

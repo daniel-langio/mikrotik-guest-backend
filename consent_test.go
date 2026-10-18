@@ -114,9 +114,9 @@ func TestMarkOnline(t *testing.T) {
 
 func TestActivityPanelAndActiveDot(t *testing.T) {
 	w := httptest.NewRecorder()
-	render(w, httptest.NewRequest("GET", "/admin/activity", nil), "admin_activity.html", []ActivityRow{{
+	render(w, httptest.NewRequest("GET", "/admin/activity", nil), "admin_activity.html", map[string]any{"Pager": Pager{Base: "/admin/activity", Page: 1}, "Rows": []ActivityRow{{
 		LastSeen: time.Now(), Username: "GUEST-X", MAC: "AA", Router: "aphrodite", Proto: "tcp",
-		DstIP: "1.2.3.4", Domain: "example.com", DstPort: 443, Up: 1024, Down: 4096}})
+		DstIP: "1.2.3.4", Domain: "example.com", DstPort: 443, Up: 1024, Down: 4096}}})
 	for _, want := range []string{"GUEST-X", "example.com:443", "1.0 KB", "4.0 KB"} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Errorf("activity panel missing %q", want)
@@ -127,5 +127,32 @@ func TestActivityPanelAndActiveDot(t *testing.T) {
 		[]ApprovedSession{{ID: 1, Username: "g", MACAddress: "AA", Router: "r", ExpiresAt: time.Now(), State: "offline"}})
 	if !strings.Contains(w.Body.String(), "dot-offline") {
 		t.Error("offline session must get the red dot class")
+	}
+}
+
+func TestPagerAndRows(t *testing.T) {
+	rows := make([]int, pageSize+1) // one extra row = there is a next page
+	data, p := pageRows(rows, "/admin/history", 2)
+	if got := len(data["Rows"].([]int)); got != pageSize {
+		t.Errorf("rows = %d, want %d", got, pageSize)
+	}
+	if !p.HasPrev || !p.HasNext || p.Prev != 1 || p.Next != 3 {
+		t.Errorf("pager = %+v", p)
+	}
+	if _, p := pageRows(make([]int, 3), "/x", 1); p.HasPrev || p.HasNext {
+		t.Errorf("short first page must have no prev/next: %+v", p)
+	}
+	for q, want := range map[string]int{"": 1, "page=0": 1, "page=-4": 1, "page=abc": 1, "page=3": 3} {
+		if got := pageParam(httptest.NewRequest("GET", "/?"+q, nil)); got != want {
+			t.Errorf("pageParam(%q) = %d, want %d", q, got, want)
+		}
+	}
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/history", nil), "admin_history.html",
+		map[string]any{"Rows": []Login{{Username: "admin", Success: true, At: time.Now()}}, "Pager": Pager{Base: "/admin/history", Page: 2, HasPrev: true, HasNext: true, Prev: 1, Next: 3}})
+	for _, want := range []string{"/admin/history?page=1", "/admin/history?page=3", "Page 2", "Précédent", "Suivant"} {
+		if !strings.Contains(w.Body.String(), want) {
+			t.Errorf("history panel missing %q", want)
+		}
 	}
 }

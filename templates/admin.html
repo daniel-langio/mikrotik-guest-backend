@@ -32,13 +32,13 @@
     <div id="users" hx-get="/admin/users" hx-trigger="load" hx-swap="innerHTML"></div>
 
     <h2>{{t "admin.devices"}} <a class="csv-link" href="/admin/devices.csv">{{t "devices.csv"}}</a></h2>
-    <div id="devices" hx-get="/admin/devices" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
+    <div id="devices" hx-get="/admin/devices" hx-trigger="load" hx-swap="innerHTML"></div>
 
     <h2>{{t "admin.activity"}} <a class="csv-link" href="/admin/activity.csv">{{t "devices.csv"}}</a></h2>
-    <div id="activity" hx-get="/admin/activity" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
+    <div id="activity" hx-get="/admin/activity" hx-trigger="load" hx-swap="innerHTML"></div>
 
     <h2>{{t "admin.history"}}</h2>
-    <div id="history" hx-get="/admin/history" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
+    <div id="history" hx-get="/admin/history" hx-trigger="load" hx-swap="innerHTML"></div>
 {{end}}
   </div>
 </body>

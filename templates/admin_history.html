@@ -1,5 +1,6 @@
+<div class="hist" hx-get="{{.Pager.Base}}?page={{.Pager.Page}}" hx-trigger="every 30s" hx-swap="outerHTML">
 <div class="card">
-{{range .}}
+{{range .Rows}}
   <div class="item">
     <div class="name"><span class="dot" {{if not .Success}}style="background:#c0392b"{{end}}></span>{{.Username}} &middot; {{if .Success}}{{t "history.ok"}}{{else}}{{t "history.failed"}}{{end}}</div>
     <div class="meta"><span class="localtime" data-iso="{{.At.Format "2006-01-02T15:04:05Z07:00"}}">{{.At.Format "15:04:05"}}</span> &middot; {{.IP}} &middot; {{.UserAgent}}</div>
@@ -7,4 +8,6 @@
 {{else}}
   <p class="empty">{{t "history.empty"}}</p>
 {{end}}
+</div>
+{{template "pager.html" .Pager}}
 </div>

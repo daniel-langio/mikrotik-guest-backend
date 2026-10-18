@@ -1,0 +1,7 @@
+{{if or .HasPrev .HasNext}}
+<div class="pager">
+  {{if .HasPrev}}<button type="button" hx-get="{{.Base}}?page={{.Prev}}" hx-target="closest .hist" hx-swap="outerHTML">&lsaquo; {{t "pager.prev"}}</button>{{else}}<span></span>{{end}}
+  <span class="meta">{{t "pager.page" .Page}}</span>
+  {{if .HasNext}}<button type="button" hx-get="{{.Base}}?page={{.Next}}" hx-target="closest .hist" hx-swap="outerHTML">{{t "pager.next"}} &rsaquo;</button>{{else}}<span></span>{{end}}
+</div>
+{{end}}

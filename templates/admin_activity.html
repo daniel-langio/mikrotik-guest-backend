@@ -1,5 +1,6 @@
+<div class="hist" hx-get="{{.Pager.Base}}?page={{.Pager.Page}}" hx-trigger="every 30s" hx-swap="outerHTML">
 <div class="card">
-{{range .}}
+{{range .Rows}}
   <div class="item">
     <div class="name">{{.Username}} &rarr; {{if .Domain}}{{.Domain}}{{else}}{{.DstIP}}{{end}}{{if .DstPort}}:{{.DstPort}}{{end}} <span class="meta">{{.Proto}}</span></div>
     <div class="meta"><span class="localtime" data-iso="{{.LastSeen.Format "2006-01-02T15:04:05Z07:00"}}">{{.LastSeen.Format "15:04:05"}}</span> &middot; {{.Router}} &middot; {{.MAC}}{{if .Domain}} &middot; {{.DstIP}}{{end}} &middot; &uarr;{{bytes .Up}} &darr;{{bytes .Down}}</div>
@@ -7,4 +8,6 @@
 {{else}}
   <p class="empty">{{t "activity.empty"}}</p>
 {{end}}
+</div>
+{{template "pager.html" .Pager}}
 </div>

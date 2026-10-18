@@ -153,6 +153,9 @@ var dict = map[string]map[string]string{
 		"activity.empty":      "Aucune activité enregistrée",
 		"ev.consent":          "consentement donné",
 		"ev.withdrawn":        "consentement retiré",
+		"pager.prev":          "Précédent",
+		"pager.next":          "Suivant",
+		"pager.page":          "Page %d",
 	},
 	"mg": {
 		"welcome.title":       "Tongasoa",
@@ -296,6 +299,9 @@ var dict = map[string]map[string]string{
 		"activity.empty":      "Tsy mbola misy asa voarakitra",
 		"ev.consent":          "nanaiky",
 		"ev.withdrawn":        "nesorina ny faneken'ny",
+		"pager.prev":          "Teo aloha",
+		"pager.next":          "Manaraka",
+		"pager.page":          "Pejy %d",
 	},
 }
 
