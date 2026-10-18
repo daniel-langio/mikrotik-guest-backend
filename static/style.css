@@ -270,3 +270,33 @@ form.lang button.on { opacity: 1; }
 .lang-wrap { margin-top: 18px; }
 .appbar-actions { display: flex; align-items: center; gap: 12px; }
 .appbar form.lang button { background: rgba(255, 255, 255, 0.15); }
+
+.help-link { margin-top: 14px; font-size: 13px; }
+.help-link a { color: var(--primary); }
+.help h3 { margin: 12px 0 4px; font-size: 16px; }
+.mock {
+  border: 1px solid var(--grey-300); border-radius: 8px; background: #fafafa;
+  padding: 18px 14px; margin: 14px 0 4px; text-align: center;
+}
+.mock .big { font-size: 20px; font-weight: 500; margin-bottom: 8px; }
+.mock .field { font-size: 13px; color: var(--grey-500); margin: 6px 0; }
+.mock .sms {
+  text-align: left; background: #e8eaf6; border-radius: 12px 12px 12px 2px;
+  padding: 10px 12px; font-size: 13px;
+}
+.mock mark { background: #fff59d; padding: 0 3px; border-radius: 2px; }
+.mock .meta { margin-top: 6px; }
+.fakebtn {
+  display: inline-block; margin-top: 8px; background: var(--accent); color: #fff;
+  padding: 9px 18px; border-radius: 4px; font-size: 13px; text-transform: uppercase;
+}
+.slides.js .slide { display: none; animation: toast-in 0.3s ease-out; }
+.slides.js .slide.on { display: block; }
+.dots { display: flex; justify-content: center; gap: 8px; margin: 10px 0 4px; }
+.dots .dot-btn {
+  width: 10px; height: 10px; padding: 0; border-radius: 50%; box-shadow: none;
+  background: var(--grey-300);
+}
+.dots .dot-btn.on { background: var(--accent); }
+.faq { text-align: left; font-size: 13px; color: var(--grey-500); padding-left: 20px; }
+.faq-title { text-align: left; }

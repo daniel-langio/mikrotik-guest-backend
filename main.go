@@ -31,6 +31,7 @@ func main() {
 		staticFiles.ServeHTTP(w, r)
 	}))
 	mux.HandleFunc("POST /lang", app.setLang)
+	mux.HandleFunc("GET /help", app.help)
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
 	mux.HandleFunc("GET /welcome/redirect", app.welcomeRedirect)

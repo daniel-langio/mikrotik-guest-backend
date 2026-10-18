@@ -228,3 +228,12 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 	}
 	render(w, r, "admin_pending.html", sessions)
 }
+
+// help is the public "how it works" page: an auto-advancing demo of the pay flow.
+func (a *App) help(w http.ResponseWriter, r *http.Request) {
+	d := map[string]any{"Price": pricePerUnit, "Mins": minsPerUnit}
+	if a.ifay != nil {
+		d["Receiver"] = a.ifay.receiver
+	}
+	render(w, r, "help.html", d)
+}

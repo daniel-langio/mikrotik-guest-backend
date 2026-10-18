@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+  <title>Aphrodite · {{t "help.title"}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v={{v}}">
+  <script src="/static/help.js?v={{v}}" defer></script>
+</head>
+<body>
+  <div class="page">
+    <div class="card welcome-card help">
+      <h1>{{t "help.title"}}</h1>
+
+      <div class="slides" id="slides">
+        <section class="slide">
+          <div class="mock"><div class="big">500 Ar &rarr; 15 min</div><div class="field">{{t "pay.price"}}: <b>500</b></div></div>
+          <h3>1. {{t "help.s1.title"}}</h3><p class="status-line">{{t "help.s1.text"}}</p>
+        </section>
+        <section class="slide">
+          <div class="mock"><div class="big">MVola / Orange Money</div><div class="field">500 Ar &rarr; <b>{{if .Receiver}}{{.Receiver}}{{else}}034 00 000 00{{end}}</b></div></div>
+          <h3>2. {{t "help.s2.title"}}</h3><p class="status-line">{{t "help.s2.text"}}</p>
+        </section>
+        <section class="slide">
+          <div class="mock"><div class="sms">Vous avez recu un transfert de 500Ar venant du 0340000000. Trans Id: <mark>PP000000.0000.X00000</mark>. Orange Money vous remercie.</div><div class="meta">{{t "help.sms_note"}}</div></div>
+          <h3>3. {{t "help.s3.title"}}</h3><p class="status-line">{{t "help.s3.text"}}</p>
+        </section>
+        <section class="slide">
+          <div class="mock"><div class="field">{{t "pay.phone"}}: <b>034 00 000 00</b></div><div class="field">{{t "pay.ref"}}: <b>PP000000.0000.X00000</b></div><div class="fakebtn">{{t "pay.submit"}}</div></div>
+          <h3>4. {{t "help.s4.title"}}</h3><p class="status-line">{{t "help.s4.text"}}</p>
+        </section>
+        <section class="slide">
+          <div class="mock"><p class="accepted"><span class="check">&#10003;</span>{{t "pay.accepted"}}</p><div class="meta">{{t "pay.redirecting"}}</div></div>
+          <h3>5. {{t "help.s5.title"}}</h3><p class="status-line">{{t "help.s5.text"}}</p>
+        </section>
+      </div>
+      <div class="dots" id="dots"></div>
+
+      <h3 class="faq-title">{{t "help.faq.title"}}</h3>
+      <ul class="faq">
+        <li>{{t "help.faq1"}}</li>
+        <li>{{t "help.faq2"}}</li>
+        <li>{{t "help.faq3"}}</li>
+        <li>{{t "help.faq4"}}</li>
+      </ul>
+
+      <p><button type="button" onclick="history.length > 1 ? history.back() : (location.href = '/')">{{t "help.back"}}</button></p>
+      <div class="lang-wrap">{{template "langswitch.html"}}</div>
+    </div>
+  </div>
+</body>
+</html>

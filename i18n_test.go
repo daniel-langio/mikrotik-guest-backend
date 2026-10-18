@@ -102,3 +102,18 @@ func TestSetLangRedirectsSameOriginOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpPage(t *testing.T) {
+	a := &App{}
+	for cookie, want := range map[string]string{"": "Comment ça marche", "mg": "Ahoana ny fampiasana"} {
+		r := httptest.NewRequest("GET", "/help", nil)
+		if cookie != "" {
+			r.AddCookie(&http.Cookie{Name: "lang", Value: cookie})
+		}
+		w := httptest.NewRecorder()
+		a.help(w, r)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), want) {
+			t.Errorf("cookie %q: code %d, %q missing", cookie, w.Code, want)
+		}
+	}
+}
