@@ -103,6 +103,13 @@ var dict = map[string]map[string]string{
 		"help.faq3":        "Payez au moins le montant choisi.",
 		"help.faq4":        "Le paiement est vérifié automatiquement, en quelques secondes.",
 		"help.sms_note":    "Exemple fictif",
+		"open.title":       "Portail ouvert (approbation automatique)",
+		"open.state_on":    "OUVERT - chaque nouvel invité reçoit %s automatiquement",
+		"open.state_off":   "Fermé - approbation manuelle ou paiement",
+		"open.btn_open":    "Ouvrir le portail",
+		"open.btn_close":   "Fermer le portail",
+		"open.confirm":     "Ouvrir le portail ? Tout invité sera connecté gratuitement, et les invités en attente seront approuvés.",
+		"open.1h":          "1 heure",
 	},
 	"mg": {
 		"welcome.title":    "Tongasoa",
@@ -196,6 +203,13 @@ var dict = map[string]map[string]string{
 		"help.faq3":        "Mandoa farafahakeliny ny vola nofidinao.",
 		"help.faq4":        "Voamarina ho azy ao anatin'ny segondra vitsy ny fandoavam-bola.",
 		"help.sms_note":    "Ohatra foronina",
+		"open.title":       "Vavahady misokatra (fankatoavana ho azy)",
+		"open.state_on":    "MISOKATRA - mahazo %s ho azy ny vahiny vaovao rehetra",
+		"open.state_off":   "Mihidy - fankatoavana tanana na fandoavam-bola",
+		"open.btn_open":    "Sokafy ny vavahady",
+		"open.btn_close":   "Akatony ny vavahady",
+		"open.confirm":     "Sokafana ve ny vavahady? Hifandray maimaim-poana ny vahiny rehetra, ary hekena ny vahiny miandry.",
+		"open.1h":          "1 ora",
 	},
 }
 

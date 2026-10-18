@@ -19,6 +19,6 @@
       <div class="lang-wrap">{{template "langswitch.html"}}</div>
     </div>
   </div>
-  <div id="poller" hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>
+  {{if not .Accepted}}<div id="poller" hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>{{end}}
 </body>
 </html>

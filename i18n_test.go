@@ -117,3 +117,48 @@ func TestHelpPage(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminOpenPanel(t *testing.T) {
+	for _, tc := range []struct {
+		duration, want, notWant string
+	}{
+		{"", "Ouvrir le portail", "Fermer le portail"},
+		{"01:00:00", "Fermer le portail", "Ouvrir le portail"},
+	} {
+		w := httptest.NewRecorder()
+		render(w, httptest.NewRequest("GET", "/admin/open", nil), "admin_open.html", map[string]any{"Duration": tc.duration})
+		b := w.Body.String()
+		if !strings.Contains(b, tc.want) || strings.Contains(b, tc.notWant) {
+			t.Errorf("duration %q: want %q and not %q in %s", tc.duration, tc.want, tc.notWant, b)
+		}
+	}
+}
+
+func TestWelcomeAcceptedHasNoPoller(t *testing.T) {
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html",
+		map[string]any{"ID": 1, "Username": "GUEST-X", "Accepted": true})
+	b := w.Body.String()
+	if !strings.Contains(b, "Approuvé") || strings.Contains(b, `hx-get="/welcome/status/`) {
+		t.Errorf("open-portal welcome should show approval and stop polling: %s", b)
+	}
+}
+
+func TestFormDuration(t *testing.T) {
+	for form, want := range map[string]string{
+		"duration=02:00:00":                 "02:00:00",
+		"duration=02:00:00&custom_m=45":     "0:45:00",
+		"custom_h=1&custom_m=30&custom_s=0": "1:30:00",
+	} {
+		r := httptest.NewRequest("POST", "/", strings.NewReader(form))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if got, ok := formDuration(r); !ok || got != want {
+			t.Errorf("%q -> %q, %v; want %q", form, got, ok, want)
+		}
+	}
+	r := httptest.NewRequest("POST", "/", strings.NewReader("duration=abc"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if _, ok := formDuration(r); ok {
+		t.Error("accepted invalid duration")
+	}
+}

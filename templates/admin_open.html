@@ -1,0 +1,31 @@
+<div class="card">
+  <div class="item">
+{{if .Duration}}
+    <div class="row">
+      <div class="name"><span class="dot"></span>{{t "open.state_on" .Duration}}</div>
+      <form hx-post="/admin/open/off" hx-target="#open" hx-swap="innerHTML">
+        <button type="submit" class="btn-danger">{{t "open.btn_close"}}</button>
+      </form>
+    </div>
+{{else}}
+    <div class="row">
+      <div class="meta">{{t "open.state_off"}}</div>
+      <form class="approve-form" hx-post="/admin/open" hx-target="#open" hx-swap="innerHTML" hx-confirm="{{t "open.confirm"}}">
+        <select name="duration" onchange="if(this.value){this.form.custom_h.value='';this.form.custom_m.value='';this.form.custom_s.value=''}">
+          <option value="" disabled>{{t "pending.custom"}}</option>
+          <option value="00:30:00">30 min</option>
+          <option value="01:00:00" selected>{{t "open.1h"}}</option>
+          <option value="02:00:00">{{t "pending.2h"}}</option>
+          <option value="24:00:00">{{t "pending.24h"}}</option>
+        </select>
+        <span class="custom-time">
+          <input type="number" name="custom_h" min="0" placeholder="h" size="2" oninput="this.closest('form').duration.value=''">
+          <input type="number" name="custom_m" min="0" max="59" placeholder="m" size="2" oninput="this.closest('form').duration.value=''">
+          <input type="number" name="custom_s" min="0" max="59" placeholder="s" size="2" oninput="this.closest('form').duration.value=''">
+        </span>
+        <button type="submit">{{t "open.btn_open"}}</button>
+      </form>
+    </div>
+{{end}}
+  </div>
+</div>

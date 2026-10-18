@@ -222,3 +222,23 @@ func clearPending(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM pending_sessions WHERE status = 'pending'`)
 	return err
 }
+
+// Open portal: while the "open_duration" setting exists, every new guest is
+// approved automatically for that long (HH:MM:SS).
+func getOpenDuration(db *sql.DB) (string, bool) {
+	var d string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = 'open_duration'`).Scan(&d)
+	return d, err == nil
+}
+
+func setOpenDuration(db *sql.DB, d string) error {
+	_, err := db.Exec(
+		`INSERT INTO settings (key, value) VALUES ('open_duration', $1)
+		 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, d)
+	return err
+}
+
+func clearOpen(db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM settings WHERE key = 'open_duration'`)
+	return err
+}

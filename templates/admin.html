@@ -18,6 +18,10 @@
     <div class="appbar-actions">{{template "langswitch.html"}}<form method="post" action="/logout"><button type="submit">{{t "admin.logout"}}</button></form></div>
   </div>
   <div class="page">
+{{if .IsAdmin}}
+    <h2>{{t "open.title"}}</h2>
+    <div id="open" hx-get="/admin/open" hx-trigger="load" hx-swap="innerHTML"></div>
+{{end}}
     <h2>{{t "admin.pending"}}</h2>
     <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
 

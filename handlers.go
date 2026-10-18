@@ -41,6 +41,19 @@ func atoiOrZero(s string) (n int, ok bool) {
 	return n, true
 }
 
+// formDuration reads the admin duration controls (preset select, or custom
+// h/m/s which win when filled) and validates the HH:MM:SS format.
+func formDuration(r *http.Request) (string, bool) {
+	duration := r.FormValue("duration")
+	h, hOK := atoiOrZero(r.FormValue("custom_h"))
+	m, mOK := atoiOrZero(r.FormValue("custom_m"))
+	s, sOK := atoiOrZero(r.FormValue("custom_s"))
+	if hOK || mOK || sOK {
+		duration = fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
+	return duration, durationFormat.MatchString(duration)
+}
+
 func redirectURL() string {
 	if u := os.Getenv("REDIRECT_URL"); u != "" {
 		return u
@@ -85,7 +98,9 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	// rather than minting a new GUEST-xxxx account and orphaning whatever
 	// row the admin is currently looking at.
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
-		render(w, r, "welcome.html", a.payData(sess))
+		d := a.payData(sess)
+		d["Accepted"] = a.autoGrant(sess)
+		render(w, r, "welcome.html", d)
 		return
 	} else if err != sql.ErrNoRows {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -98,7 +113,10 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, r, "welcome.html", a.payData(PendingSession{ID: id, Username: username}))
+	sess := PendingSession{ID: id, MACAddress: mac, Username: username, Status: "pending", Router: router}
+	d := a.payData(sess)
+	d["Accepted"] = a.autoGrant(sess)
+	render(w, r, "welcome.html", d)
 }
 
 // welcomeStatus is polled by the guest's own welcome page. Once an admin
@@ -195,14 +213,8 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	duration := r.FormValue("duration")
-	h, hOK := atoiOrZero(r.FormValue("custom_h"))
-	m, mOK := atoiOrZero(r.FormValue("custom_m"))
-	s, sOK := atoiOrZero(r.FormValue("custom_s"))
-	if hOK || mOK || sOK {
-		duration = fmt.Sprintf("%d:%02d:%02d", h, m, s)
-	}
-	if !durationFormat.MatchString(duration) {
+	duration, ok := formDuration(r)
+	if !ok {
 		http.Error(w, "duration must be HH:MM:SS", http.StatusBadRequest)
 		return
 	}
@@ -236,4 +248,46 @@ func (a *App) help(w http.ResponseWriter, r *http.Request) {
 		d["Receiver"] = a.ifay.receiver
 	}
 	render(w, r, "help.html", d)
+}
+
+// autoGrant approves a pending session on the spot while the portal is open.
+func (a *App) autoGrant(sess PendingSession) bool {
+	d, open := getOpenDuration(a.db)
+	return open && sess.Status == "pending" && a.grant(sess, d) == nil
+}
+
+func (a *App) renderOpen(w http.ResponseWriter, r *http.Request) {
+	d, _ := getOpenDuration(a.db)
+	render(w, r, "admin_open.html", map[string]any{"Duration": d})
+}
+
+func (a *App) adminOpen(w http.ResponseWriter, r *http.Request) {
+	a.renderOpen(w, r)
+}
+
+// adminOpenOn opens the portal and approves everyone already waiting.
+func (a *App) adminOpenOn(w http.ResponseWriter, r *http.Request) {
+	duration, ok := formDuration(r)
+	if !ok {
+		http.Error(w, "duration must be HH:MM:SS", http.StatusBadRequest)
+		return
+	}
+	if err := setOpenDuration(a.db, duration); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if pending, err := listPending(a.db); err == nil {
+		for _, p := range pending {
+			a.grant(p, duration) // a router error leaves that guest pending
+		}
+	}
+	a.renderOpen(w, r)
+}
+
+func (a *App) adminOpenOff(w http.ResponseWriter, r *http.Request) {
+	if err := clearOpen(a.db); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.renderOpen(w, r)
 }
