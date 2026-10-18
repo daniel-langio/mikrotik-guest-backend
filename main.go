@@ -30,6 +30,7 @@ func main() {
 		w.Header().Set("Cache-Control", "no-cache")
 		staticFiles.ServeHTTP(w, r)
 	}))
+	mux.HandleFunc("POST /lang", app.setLang)
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
 	mux.HandleFunc("GET /welcome/redirect", app.welcomeRedirect)

@@ -1,10 +1,11 @@
 <!doctype html>
-<html>
+<html lang="{{lang}}">
 <head>
-  <title>Aphrodite Guest Portal · Admin</title>
+  <title>Aphrodite · Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css?v={{v}}">
   <script src="/static/htmx.min.js?v={{v}}"></script>
+  {{template "i18n.html"}}
   <script src="/static/app.js?v={{v}}"></script>
 </head>
 <body>
@@ -12,21 +13,21 @@
   <div class="appbar">
     <div>
       <h1>Aphrodite</h1>
-      <p class="subtitle">Guest Portal &middot; {{.Username}}</p>
+      <p class="subtitle">{{t "admin.subtitle"}} &middot; {{.Username}}</p>
     </div>
-    <form method="post" action="/logout"><button type="submit">Log out</button></form>
+    <div class="appbar-actions">{{template "langswitch.html"}}<form method="post" action="/logout"><button type="submit">{{t "admin.logout"}}</button></form></div>
   </div>
   <div class="page">
-    <h2>Pending devices</h2>
+    <h2>{{t "admin.pending"}}</h2>
     <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
 
-    <h2>Active sessions</h2>
+    <h2>{{t "admin.active"}}</h2>
     <div id="active" hx-get="/admin/active" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
 {{if .IsAdmin}}
-    <h2>Operators</h2>
+    <h2>{{t "admin.operators"}}</h2>
     <div id="users" hx-get="/admin/users" hx-trigger="load" hx-swap="innerHTML"></div>
 
-    <h2>Login history</h2>
+    <h2>{{t "admin.history"}}</h2>
     <div id="history" hx-get="/admin/history" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
 {{end}}
   </div>

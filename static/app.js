@@ -15,14 +15,14 @@ function tickCountdowns() {
   document.querySelectorAll('.countdown[data-expires]').forEach(function (el) {
     var remainingMs = new Date(el.dataset.expires) - Date.now();
     if (remainingMs <= 0) {
-      el.textContent = 'expired';
+      el.textContent = T.expired;
       return;
     }
     var totalSec = Math.floor(remainingMs / 1000);
     var h = Math.floor(totalSec / 3600);
     var m = Math.floor((totalSec % 3600) / 60);
     var s = totalSec % 60;
-    el.textContent = h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' left';
+    el.textContent = h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + T.left;
   });
 }
 setInterval(tickCountdowns, 1000);
@@ -53,13 +53,13 @@ function showToast(message, isError) {
 document.addEventListener('htmx:afterRequest', function (e) {
   var verb = (e.detail.requestConfig && e.detail.requestConfig.verb) || '';
   if (e.detail.successful) {
-    if (verb === 'post') showToast('Done', false);
+    if (verb === 'post') showToast(T.done, false);
   } else {
-    showToast(e.detail.xhr.responseText || 'Something went wrong', true);
+    showToast(e.detail.xhr.responseText || T.error, true);
   }
 });
 document.addEventListener('htmx:sendError', function () {
-  showToast('Network error - could not reach the server', true);
+  showToast(T.neterror, true);
 });
 
 // Skip a poll while the admin is interacting with that panel (typing a

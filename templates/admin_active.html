@@ -8,13 +8,13 @@
       </div>
       <div class="row">
         <div class="meta countdown" data-expires="{{.ExpiresAt.Format "2006-01-02T15:04:05Z07:00"}}">&hellip;</div>
-        <form hx-post="/admin/disconnect/{{.ID}}" hx-target="#active" hx-swap="innerHTML" hx-confirm="Disconnect and delete this session?">
-          <button type="submit" class="btn-danger">Disconnect</button>
+        <form hx-post="/admin/disconnect/{{.ID}}" hx-target="#active" hx-swap="innerHTML" hx-confirm="{{t "active.disc_q"}}">
+          <button type="submit" class="btn-danger">{{t "active.disc"}}</button>
         </form>
       </div>
     </div>
   </div>
 {{else}}
-  <p class="empty">No active sessions</p>
+  <p class="empty">{{t "active.empty"}}</p>
 {{end}}
 </div>

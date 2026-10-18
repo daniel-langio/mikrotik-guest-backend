@@ -1,10 +1,10 @@
 <div class="card">
 {{range .}}
   <div class="item">
-    <div class="name"><span class="dot" {{if not .Success}}style="background:#c0392b"{{end}}></span>{{.Username}} &middot; {{if .Success}}ok{{else}}failed{{end}}</div>
+    <div class="name"><span class="dot" {{if not .Success}}style="background:#c0392b"{{end}}></span>{{.Username}} &middot; {{if .Success}}{{t "history.ok"}}{{else}}{{t "history.failed"}}{{end}}</div>
     <div class="meta"><span class="localtime" data-iso="{{.At.Format "2006-01-02T15:04:05Z07:00"}}">{{.At.Format "15:04:05"}}</span> &middot; {{.IP}} &middot; {{.UserAgent}}</div>
   </div>
 {{else}}
-  <p class="empty">No logins yet</p>
+  <p class="empty">{{t "history.empty"}}</p>
 {{end}}
 </div>

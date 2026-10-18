@@ -1,22 +1,22 @@
 <div class="card">
-{{if .Error}}<p class="status-line" style="color:#c0392b;padding:10px 18px">{{.Error}}</p>{{end}}
+{{if .Error}}<p class="status-line" style="color:#c0392b;padding:10px 18px">{{t .Error}}</p>{{end}}
 {{range .Users}}
   <div class="item">
     <div class="row">
-      <div class="name">{{.Username}} <span class="meta">operator</span></div>
-      <form hx-post="/admin/users/delete/{{.Username}}" hx-target="#users" hx-swap="innerHTML" hx-confirm="Delete operator {{.Username}}?">
-        <button type="submit" class="btn-danger">Delete</button>
+      <div class="name">{{.Username}} <span class="meta">{{t "users.operator"}}</span></div>
+      <form hx-post="/admin/users/delete/{{.Username}}" hx-target="#users" hx-swap="innerHTML" hx-confirm="{{t "users.delete_q" .Username}}">
+        <button type="submit" class="btn-danger">{{t "pending.delete"}}</button>
       </form>
     </div>
   </div>
 {{else}}
-  <p class="empty">No operators</p>
+  <p class="empty">{{t "users.empty"}}</p>
 {{end}}
   <div class="item">
     <form class="approve-form" hx-post="/admin/users" hx-target="#users" hx-swap="innerHTML">
-      <input type="text" name="username" placeholder="username" required>
-      <input type="password" name="password" placeholder="password (8+)" required minlength="8">
-      <button type="submit">Add operator</button>
+      <input type="text" name="username" placeholder="{{t "users.username"}}" required>
+      <input type="password" name="password" placeholder="{{t "users.password"}}" required minlength="8">
+      <button type="submit">{{t "users.add"}}</button>
     </form>
   </div>
 </div>

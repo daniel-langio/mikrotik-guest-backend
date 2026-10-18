@@ -263,3 +263,10 @@ form.pay-form {
   display: inline-block; width: 28px; height: 28px; line-height: 28px; margin-right: 8px;
   border-radius: 50%; background: #2e7d32; color: #fff; font-size: 17px;
 }
+
+form.lang { display: inline-flex; gap: 6px; }
+form.lang button { padding: 4px 10px; font-size: 12px; box-shadow: none; opacity: 0.55; }
+form.lang button.on { opacity: 1; }
+.lang-wrap { margin-top: 18px; }
+.appbar-actions { display: flex; align-items: center; gap: 12px; }
+.appbar form.lang button { background: rgba(255, 255, 255, 0.15); }

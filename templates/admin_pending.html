@@ -1,6 +1,6 @@
 <div class="card">
 {{if .}}
-  <div class="item"><form hx-post="/admin/pending/clear" hx-target="#pending" hx-swap="innerHTML" hx-confirm="Delete ALL pending sessions?"><button type="submit" class="btn-danger">Clear all pending</button></form></div>
+  <div class="item"><form hx-post="/admin/pending/clear" hx-target="#pending" hx-swap="innerHTML" hx-confirm="{{t "pending.clear_q"}}"><button type="submit" class="btn-danger">{{t "pending.clear"}}</button></form></div>
 {{end}}
 {{range .}}
   <div class="item">
@@ -11,24 +11,24 @@
       </div>
       <form class="approve-form" id="form-{{.ID}}" hx-preserve="true" hx-post="/admin/approve/{{.ID}}" hx-target="#pending" hx-swap="innerHTML">
         <select name="duration" onchange="if(this.value){this.form.custom_h.value='';this.form.custom_m.value='';this.form.custom_s.value=''}">
-          <option value="" disabled>Custom&hellip;</option>
+          <option value="" disabled>{{t "pending.custom"}}</option>
           <option value="00:05:00">5 min</option>
           <option value="00:15:00">15 min</option>
           <option value="00:30:00">30 min</option>
-          <option value="02:00:00">2 hours</option>
-          <option value="24:00:00">24 hours</option>
+          <option value="02:00:00">{{t "pending.2h"}}</option>
+          <option value="24:00:00">{{t "pending.24h"}}</option>
         </select>
         <span class="custom-time">
           <input type="number" name="custom_h" min="0" placeholder="h" size="2" oninput="this.closest('form').duration.value=''">
           <input type="number" name="custom_m" min="0" max="59" placeholder="m" size="2" oninput="this.closest('form').duration.value=''">
           <input type="number" name="custom_s" min="0" max="59" placeholder="s" size="2" oninput="this.closest('form').duration.value=''">
         </span>
-        <button type="submit">Approve</button>
+        <button type="submit">{{t "pending.approve"}}</button>
       </form>
-      <form hx-post="/admin/pending/delete/{{.ID}}" hx-target="#pending" hx-swap="innerHTML" hx-confirm="Delete this pending session?"><button type="submit" class="btn-danger">Delete</button></form>
+      <form hx-post="/admin/pending/delete/{{.ID}}" hx-target="#pending" hx-swap="innerHTML" hx-confirm="{{t "pending.delete_q"}}"><button type="submit" class="btn-danger">{{t "pending.delete"}}</button></form>
     </div>
   </div>
 {{else}}
-  <p class="empty">No pending devices</p>
+  <p class="empty">{{t "pending.empty"}}</p>
 {{end}}
 </div>

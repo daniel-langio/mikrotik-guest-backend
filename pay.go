@@ -72,7 +72,8 @@ func (a *App) payForm(w http.ResponseWriter, r *http.Request) {
 	}
 	d := a.payData(sess)
 	delete(d, "Waiting")
-	tmpl.ExecuteTemplate(w, "pay.html", d)
+	d["ShowForm"] = true
+	render(w, r, "pay.html", d)
 }
 
 // pay files the guest's claim with ifay. Approval then needs no human: once
@@ -86,40 +87,42 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 	}
 	d := a.payData(sess)
 	d["FPhone"], d["FRef"] = r.FormValue("phone"), r.FormValue("ref")
+	lang := langOf(r)
 	fail := func(msg string) {
 		d["Error"] = msg
+		d["ShowForm"] = true
 		delete(d, "Waiting")
-		tmpl.ExecuteTemplate(w, "pay.html", d)
+		render(w, r, "pay.html", d)
 	}
 
 	amount, _ := strconv.Atoi(r.FormValue("amount"))
 	duration, ok := durationFor(amount)
 	if !ok {
-		fail(fmt.Sprintf("Amount must be a multiple of %d Ar, up to %d Ar", pricePerUnit, maxAmount))
+		fail(tr(lang, "err.amount", pricePerUnit, maxAmount))
 		return
 	}
 	provider := r.FormValue("provider")
 	if provider != "MVOLA" && provider != "ORANGE_MONEY" {
-		fail("Unknown provider")
+		fail(tr(lang, "err.provider"))
 		return
 	}
 	phone, ok := normalizePhone(r.FormValue("phone"))
 	if !ok {
-		fail("Invalid phone number")
+		fail(tr(lang, "err.phone"))
 		return
 	}
 	ref := strings.ToUpper(strings.TrimSpace(r.FormValue("ref")))
 	if !refFormats[provider].MatchString(ref) {
-		fail("That doesn't look like a " + map[string]string{"MVOLA": "MVola", "ORANGE_MONEY": "Orange Money"}[provider] + " reference - copy it from the confirmation SMS")
+		fail(tr(lang, "err.ref_format", map[string]string{"MVOLA": "MVola", "ORANGE_MONEY": "Orange Money"}[provider]))
 		return
 	}
 
 	switch err := reserveRef(a.db, id, provider, ref, amount); {
 	case isUniqueViolation(err):
-		fail("This reference has already been used")
+		fail(tr(lang, "err.ref_used"))
 		return
 	case errors.Is(err, sql.ErrNoRows):
-		fail("This session is no longer pending")
+		fail(tr(lang, "err.not_pending"))
 		return
 	case err != nil:
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -128,7 +131,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 	p, err := a.ifay.Claim(phone, amount, provider, ref)
 	if err != nil {
 		clearClaim(a.db, id)
-		fail("Could not check the payment, try again: " + err.Error())
+		fail(tr(lang, "err.ifay", err.Error()))
 		return
 	}
 	recordClaim(a.db, p.ID)
@@ -140,7 +143,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 	if p.Status == "VERIFIED" && a.grant(sess, duration) == nil {
 		d["Accepted"] = true
 	}
-	tmpl.ExecuteTemplate(w, "pay.html", d)
+	render(w, r, "pay.html", d)
 }
 
 // grant authorizes the device and marks the session approved. Safe to call

@@ -119,30 +119,30 @@ func clientIP(r *http.Request) string {
 
 var usernameFormat = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 
-func (a *App) renderUsers(w http.ResponseWriter, errMsg string) {
+func (a *App) renderUsers(w http.ResponseWriter, r *http.Request, errKey string) {
 	users, err := listUsers(a.db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_users.html", map[string]any{"Users": users, "Error": errMsg})
+	render(w, r, "admin_users.html", map[string]any{"Users": users, "Error": errKey})
 }
 
 func (a *App) adminUsers(w http.ResponseWriter, r *http.Request) {
-	a.renderUsers(w, "")
+	a.renderUsers(w, r, "")
 }
 
 func (a *App) adminCreateUser(w http.ResponseWriter, r *http.Request) {
 	name, pw := strings.ToLower(strings.TrimSpace(r.FormValue("username"))), r.FormValue("password")
 	switch {
 	case !usernameFormat.MatchString(name):
-		a.renderUsers(w, "Username: 3-32 chars of a-z 0-9 _ . -")
+		a.renderUsers(w, r, "err.username")
 		return
 	case name == strings.ToLower(os.Getenv("ADMIN_USER")):
-		a.renderUsers(w, "That username is reserved")
+		a.renderUsers(w, r, "err.reserved")
 		return
 	case len(pw) < 8:
-		a.renderUsers(w, "Password must be at least 8 characters")
+		a.renderUsers(w, r, "err.pwlen")
 		return
 	}
 	hash, err := hashPassword(pw)
@@ -152,13 +152,13 @@ func (a *App) adminCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := a.db.Exec(`INSERT INTO users (username, password_hash) VALUES ($1, $2)`, name, hash); err != nil {
 		if isUniqueViolation(err) {
-			a.renderUsers(w, "Username already exists")
+			a.renderUsers(w, r, "err.userexists")
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.renderUsers(w, "")
+	a.renderUsers(w, r, "")
 }
 
 func (a *App) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +168,7 @@ func (a *App) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.renderUsers(w, "")
+	a.renderUsers(w, r, "")
 }
 
 func (a *App) adminHistory(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +177,7 @@ func (a *App) adminHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_history.html", logins)
+	render(w, r, "admin_history.html", logins)
 }
 
 func (a *App) adminDeletePending(w http.ResponseWriter, r *http.Request) {

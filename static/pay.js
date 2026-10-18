@@ -12,7 +12,7 @@ document.addEventListener('htmx:load', function (e) {
 
   function fmt(m) {
     var h = Math.floor(m / 60), r = m % 60;
-    return (h ? h + ' h ' : '') + (r || !h ? r + ' min' : '');
+    return (h ? h + ' ' + T.unit_h + ' ' : '') + (r || !h ? r + ' ' + T.unit_m : '');
   }
   function update() {
     if (byTime) {
@@ -21,8 +21,8 @@ document.addEventListener('htmx:load', function (e) {
     }
     var u = Math.floor((+amount.value || 0) / price);
     sum.textContent = byTime
-      ? fmt(u * mins) + ' costs ' + amount.value + ' Ar'
-      : amount.value + ' Ar gives ' + fmt(u * mins);
+      ? fmt(u * mins) + ' → ' + amount.value + ' Ar'
+      : amount.value + ' Ar → ' + fmt(u * mins);
   }
   amount.addEventListener('input', update);
   minutes.addEventListener('input', update);
@@ -30,7 +30,7 @@ document.addEventListener('htmx:load', function (e) {
     byTime = !byTime;
     priceField.hidden = byTime;
     timeField.hidden = !byTime;
-    btn.textContent = byTime ? 'Choose by price' : 'Choose by time';
+    btn.textContent = byTime ? form.dataset.lblPrice : form.dataset.lblTime;
     if (byTime) minutes.value = Math.floor((+amount.value || price) / price) * mins;
     update();
   });

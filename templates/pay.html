@@ -1,21 +1,21 @@
 {{if .Accepted}}
-<p class="accepted"><span class="check">&#10003;</span>{{if .Ref}}Payment accepted{{else}}Approved{{end}}</p>
-<p class="status-line">You're connected - redirecting&hellip;</p>
+<p class="accepted"><span class="check">&#10003;</span>{{if .Ref}}{{t "pay.accepted"}}{{else}}{{t "pay.approved"}}{{end}}</p>
+<p class="status-line">{{t "pay.redirecting"}}</p>
 <div id="poller" hx-swap-oob="delete"></div>
 <div hx-get="/welcome/redirect" hx-trigger="load delay:2s" hx-swap="none"></div>
 {{else if .Waiting}}
-<p class="status-line"><span class="pulse"></span>Checking payment <b>{{.Ref}}</b>&hellip;</p>
-<p class="status-line">You'll be connected automatically once it's confirmed - no need to refresh.</p>
-<p><button type="button" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">Wrong reference?</button></p>
-{{else if .Receiver}}
+<p class="status-line"><span class="pulse"></span>{{t "pay.checking"}} <b>{{.Ref}}</b>&hellip;</p>
+<p class="status-line">{{t "pay.auto_confirm"}}</p>
+<p><button type="button" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">{{t "pay.wrong_ref"}}</button></p>
+{{else if and .Receiver .ShowForm}}
 {{if .Error}}<p class="status-line" style="color:#c0392b">{{.Error}}</p>{{end}}
-<form class="pay-form" hx-post="/welcome/pay/{{.ID}}" hx-target="#pay" hx-swap="innerHTML" data-price="{{.Price}}" data-mins="{{.Mins}}">
-  <p class="status-line">{{.Price}} Ar = {{.Mins}} min. Send the money to <b>{{.Receiver}}</b>, then enter the reference from the confirmation SMS.</p>
-  <button type="button" id="mode">Choose by time</button>
-  <label id="price-field">Price (Ar)
+<form class="pay-form" hx-post="/welcome/pay/{{.ID}}" hx-target="#pay" hx-swap="innerHTML" data-price="{{.Price}}" data-mins="{{.Mins}}" data-lbl-time="{{t "pay.mode_time"}}" data-lbl-price="{{t "pay.mode_price"}}">
+  <p class="status-line">{{t "pay.rate" .Price .Mins}} {{t "pay.send_to"}} <b>{{.Receiver}}</b>{{t "pay.then"}}</p>
+  <button type="button" id="mode">{{t "pay.mode_time"}}</button>
+  <label id="price-field">{{t "pay.price"}}
     <input type="number" id="amount" name="amount" min="{{.Price}}" max="{{.Max}}" step="{{.Price}}" value="{{.Price}}" required>
   </label>
-  <label id="time-field" hidden>Minutes
+  <label id="time-field" hidden>{{t "pay.minutes"}}
     <input type="number" id="minutes" min="{{.Mins}}" step="{{.Mins}}" value="{{.Mins}}">
   </label>
   <p class="status-line" id="summary"></p>
@@ -23,11 +23,15 @@
     <option value="MVOLA">MVola</option>
     <option value="ORANGE_MONEY">Orange Money</option>
   </select>
-  <input type="tel" name="phone" placeholder="Your number (034...)" value="{{.FPhone}}" required>
-  <input type="text" name="ref" placeholder="Payment reference" value="{{.FRef}}" required>
-  <button type="submit">Confirm payment</button>
+  <input type="tel" name="phone" placeholder="{{t "pay.phone"}}" value="{{.FPhone}}" required>
+  <input type="text" name="ref" placeholder="{{t "pay.ref"}}" value="{{.FRef}}" required>
+  <button type="submit">{{t "pay.submit"}}</button>
 </form>
 {{else}}
-<p class="status-line"><span class="pulse"></span>Waiting for an administrator to approve your session&hellip;</p>
-<p class="status-line">You'll be connected automatically once approved - no need to refresh.</p>
+<p class="status-line"><span class="pulse"></span>{{t "admin.wait"}}</p>
+<p class="status-line">{{t "admin.auto"}}</p>
+{{if .Receiver}}
+<p class="status-line">{{t "pay.hint"}}</p>
+<p><button type="button" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">{{t "btn.approve_now"}}</button></p>
+{{end}}
 {{end}}

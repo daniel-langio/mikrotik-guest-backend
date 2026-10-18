@@ -63,7 +63,7 @@ func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (a *App) loginPage(w http.ResponseWriter, r *http.Request) {
-	tmpl.ExecuteTemplate(w, "login.html", nil)
+	render(w, r, "login.html", nil)
 }
 
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	}
 	recordLogin(a.db, user, ok, clientIP(r), r.UserAgent())
 	if !ok {
-		tmpl.ExecuteTemplate(w, "login.html", map[string]any{"Error": "Invalid username or password"})
+		render(w, r, "login.html", map[string]any{"Error": tr(langOf(r), "err.login")})
 		return
 	}
 

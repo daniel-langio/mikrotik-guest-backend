@@ -21,6 +21,9 @@ var buildVersion = fmt.Sprintf("%d", time.Now().Unix())
 
 var tmpl = template.Must(template.New("").Funcs(template.FuncMap{
 	"v": func() string { return buildVersion },
+	// placeholders so the templates parse; render() rebinds them per request
+	"t":    func(key string, args ...any) string { return key },
+	"lang": func() string { return defaultLang },
 }).ParseGlob("templates/*.html"))
 
 // Matches MikroTik's limit-uptime format (HH:MM:SS, hours uncapped). Enforced
@@ -82,7 +85,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	// rather than minting a new GUEST-xxxx account and orphaning whatever
 	// row the admin is currently looking at.
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
-		tmpl.ExecuteTemplate(w, "welcome.html", a.payData(sess))
+		render(w, r, "welcome.html", a.payData(sess))
 		return
 	} else if err != sql.ErrNoRows {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -95,7 +98,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "welcome.html", a.payData(PendingSession{ID: id, Username: username}))
+	render(w, r, "welcome.html", a.payData(PendingSession{ID: id, Username: username}))
 }
 
 // welcomeStatus is polled by the guest's own welcome page. Once an admin
@@ -116,7 +119,7 @@ func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 	if sess.Status == "approved" || a.checkClaim(sess) {
 		d := a.payData(sess)
 		d["Accepted"] = true
-		tmpl.ExecuteTemplate(w, "pay.html", d)
+		render(w, r, "pay.html", d)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent) // htmx leaves #pay untouched on 204
@@ -130,7 +133,7 @@ func (a *App) welcomeRedirect(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
-	tmpl.ExecuteTemplate(w, "admin.html", map[string]any{"Username": u.Name, "IsAdmin": u.IsAdmin})
+	render(w, r, "admin.html", map[string]any{"Username": u.Name, "IsAdmin": u.IsAdmin})
 }
 
 func (a *App) adminPending(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +142,7 @@ func (a *App) adminPending(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_pending.html", sessions)
+	render(w, r, "admin_pending.html", sessions)
 }
 
 func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +160,7 @@ func (a *App) adminActive(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_active.html", sessions)
+	render(w, r, "admin_active.html", sessions)
 }
 
 // adminDisconnect kicks a device off the router and removes its session
@@ -183,7 +186,7 @@ func (a *App) adminDisconnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_active.html", sessions)
+	render(w, r, "admin_active.html", sessions)
 }
 
 func (a *App) approve(w http.ResponseWriter, r *http.Request) {
@@ -223,5 +226,5 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "admin_pending.html", sessions)
+	render(w, r, "admin_pending.html", sessions)
 }

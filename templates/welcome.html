@@ -1,19 +1,21 @@
 <!doctype html>
-<html>
+<html lang="{{lang}}">
 <head>
-  <title>Aphrodite Guest Portal</title>
+  <title>Aphrodite · {{t "welcome.subtitle"}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css?v={{v}}">
   <script src="/static/htmx.min.js?v={{v}}"></script>
+  {{template "i18n.html"}}
   <script src="/static/pay.js?v={{v}}"></script>
 </head>
 <body>
   <div class="page">
     <div class="card welcome-card">
-      <h1>Welcome</h1>
-      <p class="subtitle">Aphrodite Guest Portal</p>
+      <h1>{{t "welcome.title"}}</h1>
+      <p class="subtitle">{{t "welcome.subtitle"}}</p>
       <div class="badge">{{.Username}}</div>
       <div id="pay">{{template "pay.html" .}}</div>
+      <div class="lang-wrap">{{template "langswitch.html"}}</div>
     </div>
   </div>
   <div id="poller" hx-get="/welcome/status/{{.ID}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>
