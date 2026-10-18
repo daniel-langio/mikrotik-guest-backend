@@ -3,6 +3,10 @@
 <p class="status-line">{{t "pay.redirecting"}}</p>
 <div id="poller" hx-swap-oob="delete"></div>
 <div hx-get="/welcome/redirect" hx-trigger="load delay:2s" hx-swap="none"></div>
+{{else if .Disabled}}
+<h3 class="svc-off">{{t "service.guest_title"}}</h3>
+<p class="status-line">{{t "service.guest_text"}}</p>
+<div class="video"><iframe src="https://www.youtube-nocookie.com/embed/{{.Video}}?autoplay=1&mute=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="video"></iframe></div>
 {{else if .Waiting}}
 <p class="status-line"><span class="pulse"></span>{{t "pay.checking"}} <b>{{.Ref}}</b>&hellip;</p>
 <p class="status-line">{{t "pay.auto_confirm"}}</p>
@@ -27,28 +31,6 @@
   <input type="text" name="ref" placeholder="{{t "pay.ref"}}" value="{{.FRef}}" required>
   <button type="submit">{{t "pay.submit"}}</button>
 </form>
-{{else if .NeedConsent}}
-<div class="consent">
-  <h3>{{t "consent.title"}}</h3>
-  <p class="consent-lead">{{t "consent.lead"}}</p>
-  <ul>
-    <li>{{t "consent.item1"}}</li>
-    <li>{{t "consent.item2"}}</li>
-    <li>{{t "consent.item3"}}</li>
-    <li>{{t "consent.item4"}}</li>
-  </ul>
-  <p class="consent-not">{{t "consent.not"}}</p>
-  <p>{{t "consent.why"}}</p>
-  <p>{{t "consent.keep" .Retention}}</p>
-  <p>{{t "consent.rights"}}</p>
-  {{if .Contact}}<p>{{t "consent.contact" .Contact}}</p>{{end}}
-  <p><a href="/privacy?s={{.ID}}&mac={{.MAC}}">{{t "consent.policy_link"}}</a></p>
-  <form hx-post="/welcome/consent/{{.ID}}" hx-target="#pay" hx-swap="innerHTML">
-    <label class="agree"><input type="checkbox" name="agree" value="1" required> {{t "consent.checkbox"}}</label>
-    <button type="submit">{{t "consent.accept"}}</button>
-  </form>
-  {{if .Receiver}}<p><button type="button" class="btn-secondary" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">{{t "consent.pay_instead"}}</button></p>{{end}}
-</div>
 {{else}}
 <p class="status-line"><span class="pulse"></span>{{t "admin.wait"}}</p>
 <p class="status-line">{{t "admin.auto"}}</p>

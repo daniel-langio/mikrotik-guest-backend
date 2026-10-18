@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -58,13 +57,12 @@ func (a *App) payData(sess PendingSession) map[string]any {
 	if a.ifay != nil {
 		d["Receiver"] = a.ifay.receiver
 	}
-	hasClaim := false
 	if ref, claimID, _, err := getClaim(a.db, sess.ID); err == nil && claimID != "" {
-		d["Waiting"], d["Ref"], hasClaim = true, ref, true
+		d["Waiting"], d["Ref"] = true, ref
 	}
-	d["MAC"], d["Retention"], d["Contact"] = sess.MACAddress, retentionDays(), os.Getenv("PRIVACY_CONTACT")
-	if a.needsConsent(sess, hasClaim) {
-		d["NeedConsent"] = true
+	d["MAC"] = sess.MACAddress
+	if sess.Status == "pending" && serviceDisabled(a.db) {
+		d["Disabled"], d["Video"] = true, pickVideo(a.db)
 	}
 	return d
 }
@@ -78,7 +76,6 @@ func (a *App) payForm(w http.ResponseWriter, r *http.Request) {
 	}
 	d := a.payData(sess)
 	delete(d, "Waiting")
-	delete(d, "NeedConsent") // chose to pay instead of consenting
 	d["ShowForm"] = true
 	render(w, r, "pay.html", d)
 }
@@ -93,7 +90,10 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := a.payData(sess)
-	delete(d, "NeedConsent")
+	if d["Disabled"] == true { // service switched off: no new claims
+		render(w, r, "pay.html", d)
+		return
+	}
 	d["FPhone"], d["FRef"] = r.FormValue("phone"), r.FormValue("ref")
 	lang := langOf(r)
 	fail := func(msg string) {
@@ -165,7 +165,7 @@ func (a *App) grant(sess PendingSession, duration, actor string) error {
 
 // checkClaim grants access to a pending session whose ifay claim is VERIFIED.
 func (a *App) checkClaim(sess PendingSession) bool {
-	if a.ifay == nil || sess.Status != "pending" {
+	if a.ifay == nil || sess.Status != "pending" || serviceDisabled(a.db) {
 		return false
 	}
 	_, claimID, amount, err := getClaim(a.db, sess.ID)

@@ -8,44 +8,81 @@ import (
 	"time"
 )
 
-func TestConsentGate(t *testing.T) {
-	data := map[string]any{"ID": 7, "MAC": "AA:BB:CC:00:00:01", "Username": "GUEST-X", "NeedConsent": true,
-		"Retention": 90, "Contact": "privacy@example.com", "Receiver": "+261329977335", "Price": 100, "Mins": 3, "Max": 50000}
+func TestLegalLineInsteadOfGate(t *testing.T) {
+	data := map[string]any{"ID": 7, "MAC": "AA:BB:CC:00:00:01", "Username": "GUEST-X", "Receiver": "+261329977335", "Price": 100, "Mins": 3, "Max": 50000}
 	for cookie, wants := range map[string][]string{
-		"fr": {"ENREGISTRONS VOTRE ACTIVITÉ", "adresse MAC", "nom de domaine", "90 jours", "privacy@example.com", "Je préfère payer", "Je ne lis pas"},
-		"mg": {"MIRAKITRA NY ASA ATAONAO", "adiresy MAC", "anaran'ny domain", "90 andro", "Manaiky ary hifandray"},
+		"fr": {"En utilisant notre service, vous acceptez notre ", "politique de confidentialité", "/privacy?s=7"},
+		"mg": {"Raha mampiasa ny serivisinay ianao, dia manaiky ny ", "politikan'ny tsiambaratelo", "/privacy?s=7"},
 	} {
 		r := httptest.NewRequest("GET", "/welcome", nil)
 		r.Header.Set("Cookie", "lang="+cookie)
 		w := httptest.NewRecorder()
-		render(w, r, "pay.html", data)
+		render(w, r, "welcome.html", data)
 		b := html.UnescapeString(w.Body.String())
 		for _, want := range wants {
-			if want == "Je ne lis pas" {
-				want = "Nous ne lisons PAS"
-			}
 			if !strings.Contains(b, want) {
-				t.Errorf("%s gate missing %q", cookie, want)
+				t.Errorf("%s: welcome page missing %q", cookie, want)
 			}
 		}
-		if !strings.Contains(b, `name="agree" value="1" required`) {
-			t.Errorf("%s: consent checkbox must be required", cookie)
+		for _, gone := range []string{`name="agree"`, "ENREGISTRONS", "MIRAKITRA", "type=\"checkbox\""} {
+			if strings.Contains(b, gone) {
+				t.Errorf("%s: %q should be gone from the guest page", cookie, gone)
+			}
 		}
-		if strings.Contains(b, `name="provider"`) {
-			t.Errorf("%s: pay form must not show behind the gate", cookie)
+		if !strings.Contains(b, "status/7?g=0") {
+			t.Errorf("%s: poller should carry g=0 when the service is on", cookie)
 		}
 	}
-	// the gate also shows up on the full welcome page, polling with g=1
+}
+
+func TestServiceDisabledScreen(t *testing.T) {
+	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Video": "YE7VzlLtp-4",
+		"Receiver": "+261329977335", "Price": 100, "Mins": 3, "Max": 50000}
 	w := httptest.NewRecorder()
 	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
-	if !strings.Contains(w.Body.String(), "status/7?g=1") {
-		t.Error("poller should carry g=1 while the gate is shown")
+	b := html.UnescapeString(w.Body.String())
+	for _, want := range []string{"Service désactivé par l'admin", "youtube-nocookie.com/embed/YE7VzlLtp-4", "status/7?g=1"} {
+		if !strings.Contains(b, want) {
+			t.Errorf("disabled screen missing %q", want)
+		}
 	}
-	delete(data, "NeedConsent")
-	w = httptest.NewRecorder()
-	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
-	if !strings.Contains(w.Body.String(), "status/7?g=0") {
-		t.Error("poller should carry g=0 without the gate")
+	if strings.Contains(b, `name="provider"`) || strings.Contains(b, "Approuver maintenant") {
+		t.Error("no way to connect while the service is disabled")
+	}
+}
+
+func TestParseVideoIDs(t *testing.T) {
+	text := "https://www.youtube.com/watch?v=YE7VzlLtp-4\nhttps://youtu.be/eRsGyueVLvQ?t=5\n  R6MlUcmOul8  \nnot a video\nhttps://www.youtube.com/embed/TLkA0RELQ1g\n\n"
+	got := parseVideoIDs(text)
+	want := []string{"YE7VzlLtp-4", "eRsGyueVLvQ", "R6MlUcmOul8", "TLkA0RELQ1g"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+	for _, id := range defaultVideos {
+		if !ytID.MatchString(id) {
+			t.Errorf("default video %q is not a valid id", id)
+		}
+	}
+}
+
+func TestAdminServicePanel(t *testing.T) {
+	for disabled, wants := range map[bool][]string{
+		false: {"Service actif", "Désactiver le service", "/admin/service/off"},
+		true:  {"Service désactivé par l'admin", "Réactiver le service", "/admin/service/on"},
+	} {
+		w := httptest.NewRecorder()
+		render(w, httptest.NewRequest("GET", "/admin/service", nil), "admin_service.html", map[string]any{"Disabled": disabled, "Videos": "https://youtu.be/YE7VzlLtp-4"})
+		b := html.UnescapeString(w.Body.String())
+		for _, want := range wants {
+			if !strings.Contains(b, want) {
+				t.Errorf("disabled=%v: panel missing %q", disabled, want)
+			}
+		}
 	}
 }
 

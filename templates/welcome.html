@@ -16,10 +16,10 @@
       <div class="badge">{{.Username}}</div>
       <div id="pay">{{template "pay.html" .}}</div>
       <p class="help-link"><a href="/help">{{t "help.link"}}</a></p>
-      <p class="help-link"><a href="/privacy?s={{.ID}}&mac={{.MAC}}">{{t "privacy.link"}}</a></p>
+      <p class="legal-line">{{t "legal.prefix"}}<a href="/privacy?s={{.ID}}&mac={{.MAC}}">{{t "legal.link"}}</a>{{t "legal.suffix"}}</p>
       <div class="lang-wrap">{{template "langswitch.html"}}</div>
     </div>
   </div>
-  {{if not .Accepted}}<div id="poller" hx-get="/welcome/status/{{.ID}}?g={{if .NeedConsent}}1{{else}}0{{end}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>{{end}}
+  {{if not .Accepted}}<div id="poller" hx-get="/welcome/status/{{.ID}}?g={{if .Disabled}}1{{else}}0{{end}}" hx-trigger="every 2s" hx-target="#pay" hx-swap="innerHTML"></div>{{end}}
 </body>
 </html>

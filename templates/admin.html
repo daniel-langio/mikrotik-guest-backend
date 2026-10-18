@@ -19,6 +19,9 @@
   </div>
   <div class="page">
 {{if .IsAdmin}}
+    <h2>{{t "service.title"}}</h2>
+    <div id="service" hx-get="/admin/service" hx-trigger="load" hx-swap="innerHTML"></div>
+
     <h2>{{t "open.title"}}</h2>
     <div id="open" hx-get="/admin/open" hx-trigger="load" hx-swap="innerHTML"></div>
 {{end}}

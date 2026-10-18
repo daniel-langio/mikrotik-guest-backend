@@ -103,7 +103,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
 		setDevice(a.db, sess.ID, os, r.UserAgent())
 		d := a.payData(sess)
-		d["Accepted"] = a.autoGrant(sess)
+		d["Accepted"] = a.autoGrant(r, sess)
 		render(w, r, "welcome.html", d)
 		return
 	} else if err != sql.ErrNoRows {
@@ -120,7 +120,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	go a.fetchLease(id, router, mac)
 	sess := PendingSession{ID: id, MACAddress: mac, Username: username, Status: "pending", Router: router}
 	d := a.payData(sess)
-	d["Accepted"] = a.autoGrant(sess)
+	d["Accepted"] = a.autoGrant(r, sess)
 	render(w, r, "welcome.html", d)
 }
 
@@ -139,16 +139,15 @@ func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if sess.Status == "approved" || a.checkClaim(sess) {
+	if sess.Status == "approved" || a.checkClaim(sess) || a.autoGrant(r, sess) {
 		d := a.payData(sess)
 		d["Accepted"] = true
 		render(w, r, "pay.html", d)
 		return
 	}
-	// The page was drawn with or without the consent gate (g); if the portal
-	// opened or closed since, reload once so the guest sees the right screen.
-	_, claimID, _, _ := getClaim(a.db, sess.ID)
-	if sess.Status == "pending" && a.needsConsent(sess, claimID != "") != (r.URL.Query().Get("g") == "1") {
+	// g says whether the page was drawn as "service disabled"; if the switch
+	// flipped since, reload once so the guest sees the right screen.
+	if sess.Status == "pending" && serviceDisabled(a.db) != (r.URL.Query().Get("g") == "1") {
 		w.Header().Set("HX-Refresh", "true")
 	}
 	w.WriteHeader(http.StatusNoContent) // htmx leaves #pay untouched on 204
@@ -262,12 +261,19 @@ func (a *App) help(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "help.html", d)
 }
 
-// autoGrant approves a pending session on the spot while the portal is open -
-// but only once the guest has consented to activity recording (free access is
-// given in exchange for it, see consent.go).
-func (a *App) autoGrant(sess PendingSession) bool {
+// autoGrant approves a pending session on the spot while the portal is open
+// (and the service isn't switched off). Using the free service is the
+// acceptance of the confidentiality policy, so an implied consent is recorded
+// with the grant - that is what lets the collector cover this device.
+func (a *App) autoGrant(r *http.Request, sess PendingSession) bool {
 	d, _, open := getOpen(a.db)
-	return open && sess.Status == "pending" && hasConsent(a.db, sess.ID) && a.grant(sess, d, "open") == nil
+	if !open || sess.Status != "pending" || serviceDisabled(a.db) {
+		return false
+	}
+	if !hasConsent(a.db, sess.ID) {
+		recordConsent(a.db, sess, langOf(r), r.UserAgent(), "implied")
+	}
+	return a.grant(sess, d, "open") == nil
 }
 
 func (a *App) renderOpen(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,16 @@
+<div class="card">
+  <div class="item">
+    <div class="name"><span class="dot {{if .Disabled}}dot-offline{{end}}"></span>{{if .Disabled}}{{t "service.off_state"}}{{else}}{{t "service.on_state"}}{{end}}</div>
+    <label class="svc-videos">{{t "service.videos"}}
+      <textarea id="svc-videos" name="videos" rows="3" placeholder="https://www.youtube.com/watch?v=...">{{.Videos}}</textarea>
+    </label>
+    <div class="row">
+      {{if .Disabled}}
+      <button type="button" hx-post="/admin/service/on" hx-include="#svc-videos" hx-target="#service" hx-swap="innerHTML">{{t "service.btn_enable"}}</button>
+      {{else}}
+      <button type="button" class="btn-danger" hx-post="/admin/service/off" hx-include="#svc-videos" hx-target="#service" hx-swap="innerHTML" hx-confirm="{{t "service.confirm"}}">{{t "service.btn_disable"}}</button>
+      {{end}}
+      <button type="button" class="btn-secondary" hx-post="/admin/service/videos" hx-include="#svc-videos" hx-target="#service" hx-swap="innerHTML">{{t "service.save_videos"}}</button>
+    </div>
+  </div>
+</div>
