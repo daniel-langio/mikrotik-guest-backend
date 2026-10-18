@@ -27,7 +27,7 @@ CREATE INDEX device_history_mac ON device_history (mac_address, at DESC);
 
 -- Backfill from the sessions that already exist.
 INSERT INTO device_history (at, event, session_id, mac_address, ip_address, username, router, os, user_agent, hostname, vendor_class, provider, psp_ref, amount)
-  SELECT created_at, 'pending', id, mac_address, ip_address, username, router, os, provider, psp_ref, amount
+  SELECT created_at, 'pending', id, mac_address, ip_address, username, router, os, user_agent, hostname, vendor_class, provider, psp_ref, amount
   FROM pending_sessions;
 INSERT INTO device_history (at, event, session_id, mac_address, ip_address, username, router, os, provider, psp_ref, amount, duration)
   SELECT approved_at, 'approved', id, mac_address, ip_address, username, router, os, provider, psp_ref, amount, duration
