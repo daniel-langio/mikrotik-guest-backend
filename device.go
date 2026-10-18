@@ -43,3 +43,28 @@ func deviceOS(ua string) string {
 	}
 	return ""
 }
+
+var androidDHCP = regexp.MustCompile(`^android-dhcp-(\d+)`)
+
+// osFromLease guesses the system from DHCP data when the browser said
+// nothing (iOS' captive sheet, for one). iOS sends no vendor class, so for
+// Apple devices only the hostname ("...iPhone", "...iPad", "...MacBook")
+// gives it away.
+func osFromLease(l Lease) string {
+	host := strings.ToLower(l.Hostname)
+	switch {
+	case androidDHCP.MatchString(l.Vendor):
+		return "Android " + androidDHCP.FindStringSubmatch(l.Vendor)[1]
+	case strings.HasPrefix(l.Vendor, "MSFT"):
+		return "Windows"
+	case strings.Contains(host, "iphone"):
+		return "iOS"
+	case strings.Contains(host, "ipad"):
+		return "iPadOS"
+	case strings.Contains(host, "macbook"), strings.Contains(host, "imac"):
+		return "macOS"
+	case strings.HasPrefix(l.Vendor, "dhcpcd"), strings.HasPrefix(l.Vendor, "udhcp"):
+		return "Linux"
+	}
+	return ""
+}

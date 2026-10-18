@@ -29,6 +29,13 @@ const dialTimeout = 8 * time.Second
 type MikroTikClient interface {
 	AuthorizeDevice(mac string) error
 	DeauthorizeDevice(mac string) error
+	LeaseInfo(mac string) (Lease, error)
+}
+
+// Lease is what the router's DHCP server knows about a device.
+type Lease struct {
+	Hostname string // DHCP option 12, e.g. "Daniels-iPhone"
+	Vendor   string // DHCP option 60 (class id), e.g. "android-dhcp-13", "MSFT 5.0"
 }
 
 type routerOSClient struct {
@@ -38,7 +45,9 @@ type routerOSClient struct {
 }
 
 // loadRouters parses ROUTERS, e.g.
-//   "aphrodite|102.18.61.39:8728|backend-api|pass1;cythera|192.168.1.201:8728|backend-api|pass2"
+//
+//	"aphrodite|102.18.61.39:8728|backend-api|pass1;cythera|192.168.1.201:8728|backend-api|pass2"
+//
 // into a name -> client map. The first entry is the default router, used
 // when a guest's login page doesn't specify one (older login.html copies).
 func loadRouters() (clients map[string]MikroTikClient, defaultName string) {
@@ -105,4 +114,28 @@ func (c *routerOSClient) DeauthorizeDevice(mac string) error {
 		}
 	}
 	return nil
+}
+
+// LeaseInfo reads the device's DHCP lease. No lease is not an error: the
+// zero Lease comes back.
+func (c *routerOSClient) LeaseInfo(mac string) (Lease, error) {
+	client, err := c.dial()
+	if err != nil {
+		return Lease{}, err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/ip/dhcp-server/lease/print", "?mac-address="+mac)
+	if err != nil || len(reply.Re) == 0 {
+		return Lease{}, err
+	}
+	m := reply.Re[0].Map
+	l := Lease{Hostname: m["host-name"], Vendor: m["class-id"]}
+	if l.Hostname == "" {
+		l.Hostname = m["active-host-name"]
+	}
+	if l.Vendor == "" {
+		l.Vendor = m["active-class-id"]
+	}
+	return l, nil
 }

@@ -99,7 +99,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	// row the admin is currently looking at.
 	os := deviceOS(r.UserAgent())
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
-		setOS(a.db, sess.ID, os)
+		setDevice(a.db, sess.ID, os, r.UserAgent())
 		d := a.payData(sess)
 		d["Accepted"] = a.autoGrant(sess)
 		render(w, r, "welcome.html", d)
@@ -110,11 +110,12 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := "GUEST-" + randSuffix()
-	id, err := insertPending(a.db, mac, ip, username, router, os)
+	id, err := insertPending(a.db, mac, ip, username, router, os, r.UserAgent())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	go a.fetchLease(id, router, mac)
 	sess := PendingSession{ID: id, MACAddress: mac, Username: username, Status: "pending", Router: router}
 	d := a.payData(sess)
 	d["Accepted"] = a.autoGrant(sess)
@@ -191,6 +192,7 @@ func (a *App) adminDisconnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
+	logDevice(a.db, id, "disconnected", "admin:"+currentUser(r).Name)
 	router, mac, err := deleteSession(a.db, id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -230,7 +232,7 @@ func (a *App) approve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	if err := approveSession(a.db, id, duration); err != nil {
+	if err := approveSession(a.db, id, duration, "admin:"+currentUser(r).Name); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -254,13 +256,17 @@ func (a *App) help(w http.ResponseWriter, r *http.Request) {
 
 // autoGrant approves a pending session on the spot while the portal is open.
 func (a *App) autoGrant(sess PendingSession) bool {
-	d, open := getOpenDuration(a.db)
-	return open && sess.Status == "pending" && a.grant(sess, d) == nil
+	d, _, open := getOpen(a.db)
+	return open && sess.Status == "pending" && a.grant(sess, d, "open") == nil
 }
 
 func (a *App) renderOpen(w http.ResponseWriter, r *http.Request) {
-	d, _ := getOpenDuration(a.db)
-	render(w, r, "admin_open.html", map[string]any{"Duration": d})
+	d, until, _ := getOpen(a.db)
+	data := map[string]any{"Duration": d}
+	if !until.IsZero() {
+		data["Until"] = until
+	}
+	render(w, r, "admin_open.html", data)
 }
 
 func (a *App) adminOpen(w http.ResponseWriter, r *http.Request) {
@@ -274,13 +280,26 @@ func (a *App) adminOpenOn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "duration must be HH:MM:SS", http.StatusBadRequest)
 		return
 	}
-	if err := setOpenDuration(a.db, duration); err != nil {
+	// "close in": a custom number of minutes wins over the preset; none = manual close
+	closeMin, _ := strconv.Atoi(r.FormValue("close_min"))
+	if closeMin == 0 {
+		closeMin, _ = strconv.Atoi(r.FormValue("close_in"))
+	}
+	var until time.Time
+	if closeMin > 0 {
+		if closeMin > 7*24*60 {
+			http.Error(w, "close_min must be at most 10080 (7 days)", http.StatusBadRequest)
+			return
+		}
+		until = time.Now().Add(time.Duration(closeMin) * time.Minute)
+	}
+	if err := setOpen(a.db, duration, until); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if pending, err := listPending(a.db); err == nil {
 		for _, p := range pending {
-			a.grant(p, duration) // a router error leaves that guest pending
+			a.grant(p, duration, "open") // a router error leaves that guest pending
 		}
 	}
 	a.renderOpen(w, r)
@@ -292,4 +311,12 @@ func (a *App) adminOpenOff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.renderOpen(w, r)
+}
+
+// fetchLease runs off the request path: the router can be slow or down, and
+// the guest's page must not wait on it.
+func (a *App) fetchLease(id int, router, mac string) {
+	if l, err := a.router(router).LeaseInfo(mac); err == nil && (l.Hostname != "" || l.Vendor != "") {
+		setLease(a.db, id, l)
+	}
 }

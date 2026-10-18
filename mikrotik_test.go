@@ -17,6 +17,10 @@ func (f *fakeMikroTik) DeauthorizeDevice(mac string) error {
 	return nil
 }
 
+func (f *fakeMikroTik) LeaseInfo(mac string) (Lease, error) {
+	return Lease{Hostname: "Demo-Phone", Vendor: "android-dhcp-13"}, nil
+}
+
 func TestFakeMikroTik_RecordsCalls(t *testing.T) {
 	fake := &fakeMikroTik{}
 	if err := fake.AuthorizeDevice("AA:BB:CC:DD:EE:FF"); err != nil {

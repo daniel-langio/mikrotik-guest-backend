@@ -2,7 +2,8 @@
   <div class="item">
 {{if .Duration}}
     <div class="row">
-      <div class="name"><span class="dot"></span>{{t "open.state_on" .Duration}}</div>
+      <div><div class="name"><span class="dot"></span>{{t "open.state_on" .Duration}}</div>
+        <div class="meta">{{if .Until}}{{t "open.closes_at"}} <span class="localtime" data-iso="{{.Until.Format "2006-01-02T15:04:05Z07:00"}}">{{.Until.Format "15:04:05"}}</span>{{else}}{{t "open.no_close"}}{{end}}</div></div>
       <form hx-post="/admin/open/off" hx-target="#open" hx-swap="innerHTML">
         <button type="submit" class="btn-danger">{{t "open.btn_close"}}</button>
       </form>
@@ -23,6 +24,18 @@
           <input type="number" name="custom_m" min="0" max="59" placeholder="m" size="2" oninput="this.closest('form').duration.value=''">
           <input type="number" name="custom_s" min="0" max="59" placeholder="s" size="2" oninput="this.closest('form').duration.value=''">
         </span>
+        <label class="close-in">{{t "open.close_in"}}
+          <select name="close_in">
+            <option value="">{{t "open.never"}}</option>
+            <option value="30">30 min</option>
+            <option value="60">{{t "open.1h"}}</option>
+            <option value="120">{{t "pending.2h"}}</option>
+            <option value="240">{{t "open.4h"}}</option>
+            <option value="480">{{t "open.8h"}}</option>
+            <option value="1440">{{t "pending.24h"}}</option>
+          </select>
+          <input type="number" name="close_min" min="1" max="10080" placeholder="{{t "open.custom_min"}}" oninput="if(this.value)this.form.close_in.value=''">
+        </label>
         <button type="submit">{{t "open.btn_open"}}</button>
       </form>
     </div>

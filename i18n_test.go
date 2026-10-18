@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Every key used by a template or Go code must exist in both languages, and
@@ -160,5 +161,46 @@ func TestFormDuration(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if _, ok := formDuration(r); ok {
 		t.Error("accepted invalid duration")
+	}
+}
+
+func TestAdminOpenPanelShowsCloseTime(t *testing.T) {
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/open", nil), "admin_open.html",
+		map[string]any{"Duration": "01:00:00", "Until": time.Date(2026, 10, 18, 18, 30, 0, 0, time.UTC)})
+	if b := w.Body.String(); !strings.Contains(b, "Ferme à") || !strings.Contains(b, "2026-10-18T18:30:00Z") {
+		t.Errorf("close time missing: %s", b)
+	}
+	w = httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/open", nil), "admin_open.html", map[string]any{"Duration": "01:00:00"})
+	if !strings.Contains(w.Body.String(), "fermeture manuelle") {
+		t.Error("manual-close note missing")
+	}
+	w = httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/open", nil), "admin_open.html", map[string]any{})
+	if !strings.Contains(w.Body.String(), `name="close_in"`) {
+		t.Error("close-in control missing from the open form")
+	}
+}
+
+func TestDeviceCSVAndPanel(t *testing.T) {
+	ev := []DeviceEvent{{At: time.Date(2026, 10, 18, 9, 0, 0, 0, time.UTC), Event: "approved", Actor: "payment", SessionID: 7,
+		MAC: "AA:BB:CC:00:00:01", IP: "10.0.0.5", Username: "GUEST-X", Router: "aphrodite", OS: "Android 13 · SM-A515F",
+		Hostname: "Demo-Phone", VendorClass: "android-dhcp-13", Provider: "ORANGE_MONEY", Ref: "PP000000.0000.X00000", Amount: 500, Duration: "0:15:00"}}
+	var sb strings.Builder
+	if err := writeDeviceCSV(&sb, ev); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"hostname,vendor_class", "Demo-Phone,android-dhcp-13", "PP000000.0000.X00000,500,0:15:00"} {
+		if !strings.Contains(sb.String(), want) {
+			t.Errorf("csv missing %q: %s", want, sb.String())
+		}
+	}
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/devices", nil), "admin_devices.html", ev)
+	for _, want := range []string{"GUEST-X", "approuvé", "paiement", "Demo-Phone", "ORANGE_MONEY"} {
+		if !strings.Contains(w.Body.String(), want) {
+			t.Errorf("panel missing %q", want)
+		}
 	}
 }

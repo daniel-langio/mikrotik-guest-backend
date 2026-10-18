@@ -21,3 +21,19 @@ func TestDeviceOS(t *testing.T) {
 		}
 	}
 }
+
+func TestOSFromLease(t *testing.T) {
+	for l, want := range map[Lease]string{
+		{Vendor: "android-dhcp-13"}:               "Android 13",
+		{Vendor: "MSFT 5.0"}:                      "Windows",
+		{Hostname: "Daniels-iPhone"}:              "iOS",
+		{Hostname: "iPad-de-Sarah"}:               "iPadOS",
+		{Hostname: "Toms-MacBook-Pro"}:            "macOS",
+		{Vendor: "dhcpcd-9.4.1:Linux-6.1:x86_64"}: "Linux",
+		{Hostname: "esp32-sensor"}:                "",
+	} {
+		if got := osFromLease(l); got != want {
+			t.Errorf("osFromLease(%+v) = %q, want %q", l, got, want)
+		}
+	}
+}

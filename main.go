@@ -79,6 +79,8 @@ func (a *App) routes() *http.ServeMux {
 	mux.HandleFunc("GET /admin/open", a.requireAdmin(a.adminOpen))
 	mux.HandleFunc("POST /admin/open", a.requireAdmin(a.adminOpenOn))
 	mux.HandleFunc("POST /admin/open/off", a.requireAdmin(a.adminOpenOff))
+	mux.HandleFunc("GET /admin/devices", a.requireAdmin(a.adminDevices))
+	mux.HandleFunc("GET /admin/devices.csv", a.requireAdmin(a.adminDevicesCSV))
 	mux.HandleFunc("GET /admin/users", a.requireAdmin(a.adminUsers))
 	mux.HandleFunc("POST /admin/users", a.requireAdmin(a.adminCreateUser))
 	mux.HandleFunc("POST /admin/users/delete/{username}", a.requireAdmin(a.adminDeleteUser))

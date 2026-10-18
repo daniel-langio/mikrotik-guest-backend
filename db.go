@@ -21,6 +21,7 @@ type PendingSession struct {
 	CreatedAt  time.Time
 	ApprovedAt sql.NullTime
 	OS         string // from the portal request's User-Agent, see deviceOS
+	Hostname   string // from the router's DHCP lease
 }
 
 // openDB uses the simple protocol: behind a transaction-mode pooler
@@ -35,18 +36,21 @@ func openDB() (*sql.DB, error) {
 	return stdlib.OpenDB(*cfg), nil
 }
 
-func insertPending(db *sql.DB, mac, ip, username, router, os string) (int, error) {
+func insertPending(db *sql.DB, mac, ip, username, router, os, userAgent string) (int, error) {
 	var id int
 	err := db.QueryRow(
-		`INSERT INTO pending_sessions (mac_address, ip_address, username, router, os) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		mac, ip, username, router, os,
+		`INSERT INTO pending_sessions (mac_address, ip_address, username, router, os, user_agent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		mac, ip, username, router, os, userAgent,
 	).Scan(&id)
+	if err == nil {
+		logDevice(db, id, "pending", "")
+	}
 	return id, err
 }
 
 func listPending(db *sql.DB) ([]PendingSession, error) {
 	rows, err := db.Query(
-		`SELECT id, mac_address, ip_address, username, status, duration, router, created_at, approved_at, COALESCE(os, '')
+		`SELECT id, mac_address, ip_address, username, status, duration, router, created_at, approved_at, COALESCE(os, ''), COALESCE(hostname, '')
 		 FROM pending_sessions WHERE status = 'pending' ORDER BY created_at`,
 	)
 	if err != nil {
@@ -57,7 +61,7 @@ func listPending(db *sql.DB) ([]PendingSession, error) {
 	var sessions []PendingSession
 	for rows.Next() {
 		var s PendingSession
-		if err := rows.Scan(&s.ID, &s.MACAddress, &s.IPAddress, &s.Username, &s.Status, &s.Duration, &s.Router, &s.CreatedAt, &s.ApprovedAt, &s.OS); err != nil {
+		if err := rows.Scan(&s.ID, &s.MACAddress, &s.IPAddress, &s.Username, &s.Status, &s.Duration, &s.Router, &s.CreatedAt, &s.ApprovedAt, &s.OS, &s.Hostname); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
@@ -87,7 +91,7 @@ func sweepExpiredSessions(db *sql.DB) ([]struct{ Router, MAC string }, error) {
 	rows, err := db.Query(
 		`UPDATE pending_sessions SET status = 'expired'
 		 WHERE status = 'approved' AND approved_at + duration::interval <= now()
-		 RETURNING router, mac_address`,
+		 RETURNING router, mac_address, id`,
 	)
 	if err != nil {
 		return nil, err
@@ -95,14 +99,24 @@ func sweepExpiredSessions(db *sql.DB) ([]struct{ Router, MAC string }, error) {
 	defer rows.Close()
 
 	var out []struct{ Router, MAC string }
+	var ids []int
 	for rows.Next() {
 		var e struct{ Router, MAC string }
-		if err := rows.Scan(&e.Router, &e.MAC); err != nil {
+		var id int
+		if err := rows.Scan(&e.Router, &e.MAC, &id); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
+		ids = append(ids, id)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	for _, id := range ids {
+		logDevice(db, id, "expired", "expiry")
+	}
+	return out, nil
 }
 
 type ApprovedSession struct {
@@ -112,11 +126,12 @@ type ApprovedSession struct {
 	Router     string
 	ExpiresAt  time.Time
 	OS         string
+	Hostname   string
 }
 
 func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	rows, err := db.Query(
-		`SELECT id, username, mac_address, router, approved_at + duration::interval AS expires_at, COALESCE(os, '')
+		`SELECT id, username, mac_address, router, approved_at + duration::interval AS expires_at, COALESCE(os, ''), COALESCE(hostname, '')
 		 FROM pending_sessions WHERE status = 'approved' ORDER BY approved_at`,
 	)
 	if err != nil {
@@ -127,7 +142,7 @@ func listApproved(db *sql.DB) ([]ApprovedSession, error) {
 	var sessions []ApprovedSession
 	for rows.Next() {
 		var s ApprovedSession
-		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.ExpiresAt, &s.OS); err != nil {
+		if err := rows.Scan(&s.ID, &s.Username, &s.MACAddress, &s.Router, &s.ExpiresAt, &s.OS, &s.Hostname); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
@@ -152,12 +167,22 @@ func getSession(db *sql.DB, id int) (PendingSession, error) {
 	return s, err
 }
 
-func approveSession(db *sql.DB, id int, duration string) error {
-	_, err := db.Exec(
+// approveSession flips a pending session to approved and logs it. actor says
+// who/what approved: "admin:<name>", "payment" or "open". A session that is
+// no longer pending (a concurrent poll got there first) is left alone and
+// not logged twice.
+func approveSession(db *sql.DB, id int, duration, actor string) error {
+	res, err := db.Exec(
 		`UPDATE pending_sessions SET status = 'approved', duration = $1, approved_at = now() WHERE id = $2 AND status = 'pending'`,
 		duration, id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 1 {
+		logDevice(db, id, "approved", actor)
+	}
+	return nil
 }
 
 func createAdminSession(db *sql.DB, token string, ttl time.Duration, username string, isAdmin bool) error {
@@ -215,40 +240,81 @@ func clearClaim(db *sql.DB, id int) {
 	db.Exec(`UPDATE pending_sessions SET provider = NULL, psp_ref = NULL, amount = NULL, claim_id = NULL WHERE id = $1`, id)
 }
 
-func deletePending(db *sql.DB, id int) error {
+func deletePending(db *sql.DB, id int, actor string) error {
+	logPendingDeleted(db, id, actor)
 	_, err := db.Exec(`DELETE FROM pending_sessions WHERE id = $1 AND status = 'pending'`, id)
 	return err
 }
 
-func clearPending(db *sql.DB) error {
+func clearPending(db *sql.DB, actor string) error {
+	logPendingDeleted(db, 0, actor)
 	_, err := db.Exec(`DELETE FROM pending_sessions WHERE status = 'pending'`)
 	return err
 }
 
 // Open portal: while the "open_duration" setting exists, every new guest is
-// approved automatically for that long (HH:MM:SS).
-func getOpenDuration(db *sql.DB) (string, bool) {
-	var d string
-	err := db.QueryRow(`SELECT value FROM settings WHERE key = 'open_duration'`).Scan(&d)
-	return d, err == nil
+// approved automatically for that long (HH:MM:SS). An optional "open_until"
+// (RFC3339) closes the portal by itself: it is checked on use, and an elapsed
+// window is cleared on the spot, so no background job is needed.
+func getOpen(db *sql.DB) (duration string, until time.Time, ok bool) {
+	var d, u sql.NullString
+	err := db.QueryRow(`SELECT (SELECT value FROM settings WHERE key = 'open_duration'),
+		(SELECT value FROM settings WHERE key = 'open_until')`).Scan(&d, &u)
+	if err != nil || !d.Valid {
+		return "", time.Time{}, false
+	}
+	if u.Valid {
+		if until, err = time.Parse(time.RFC3339, u.String); err == nil && !time.Now().Before(until) {
+			clearOpen(db)
+			return "", time.Time{}, false
+		}
+	}
+	return d.String, until, true
 }
 
-func setOpenDuration(db *sql.DB, d string) error {
-	_, err := db.Exec(
-		`INSERT INTO settings (key, value) VALUES ('open_duration', $1)
-		 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, d)
-	return err
+// setOpen opens the portal; a zero until means "stay open until closed by hand".
+func setOpen(db *sql.DB, duration string, until time.Time) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO settings (key, value) VALUES ('open_duration', $1)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, duration); err != nil {
+		return err
+	}
+	if until.IsZero() {
+		_, err = tx.Exec(`DELETE FROM settings WHERE key = 'open_until'`)
+	} else {
+		_, err = tx.Exec(`INSERT INTO settings (key, value) VALUES ('open_until', $1)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, until.UTC().Format(time.RFC3339))
+	}
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func clearOpen(db *sql.DB) error {
-	_, err := db.Exec(`DELETE FROM settings WHERE key = 'open_duration'`)
+	_, err := db.Exec(`DELETE FROM settings WHERE key IN ('open_duration', 'open_until')`)
 	return err
 }
 
-// setOS refreshes a session's OS when a later request tells us more (e.g. the
-// real browser after the captive-portal mini browser).
-func setOS(db *sql.DB, id int, os string) {
+// setDevice refreshes a session's OS/User-Agent when a later request tells us
+// more (e.g. the real browser after the captive-portal mini browser).
+func setDevice(db *sql.DB, id int, os, userAgent string) {
 	if os != "" {
-		db.Exec(`UPDATE pending_sessions SET os = $1 WHERE id = $2`, os, id)
+		db.Exec(`UPDATE pending_sessions SET os = $1, user_agent = $2 WHERE id = $3`, os, userAgent, id)
 	}
+}
+
+// setLease stores what the router's DHCP lease says about a session's device,
+// on the session and on its 'pending' history row. The OS is only filled in
+// when the browser didn't already tell us.
+func setLease(db *sql.DB, id int, l Lease) {
+	os := osFromLease(l)
+	db.Exec(`UPDATE pending_sessions SET hostname = $1, vendor_class = $2, os = COALESCE(NULLIF(os, ''), NULLIF($3, '')) WHERE id = $4`,
+		l.Hostname, l.Vendor, os, id)
+	db.Exec(`UPDATE device_history SET hostname = $1, vendor_class = $2, os = COALESCE(NULLIF(os, ''), NULLIF($3, '')) WHERE session_id = $4 AND event = 'pending'`,
+		l.Hostname, l.Vendor, os, id)
 }

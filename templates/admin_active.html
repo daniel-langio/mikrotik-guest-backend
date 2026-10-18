@@ -4,7 +4,7 @@
     <div class="row">
       <div>
         <div class="name"><span class="dot"></span>{{.Username}}</div>
-        <div class="meta">{{.Router}} &middot; {{if .OS}}{{.OS}} &middot; {{end}}{{.MACAddress}}</div>
+        <div class="meta">{{.Router}} &middot; {{if .OS}}{{.OS}} &middot; {{end}}{{if .Hostname}}{{.Hostname}} &middot; {{end}}{{.MACAddress}}</div>
       </div>
       <div class="row">
         <div class="meta countdown" data-expires="{{.ExpiresAt.Format "2006-01-02T15:04:05Z07:00"}}">&hellip;</div>

@@ -140,7 +140,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d = a.payData(sess)
-	if p.Status == "VERIFIED" && a.grant(sess, duration) == nil {
+	if p.Status == "VERIFIED" && a.grant(sess, duration, "payment") == nil {
 		d["Accepted"] = true
 	}
 	render(w, r, "pay.html", d)
@@ -148,11 +148,11 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 
 // grant authorizes the device and marks the session approved. Safe to call
 // repeatedly (concurrent polls): approveSession only flips 'pending' rows.
-func (a *App) grant(sess PendingSession, duration string) error {
+func (a *App) grant(sess PendingSession, duration, actor string) error {
 	if err := a.router(sess.Router).AuthorizeDevice(sess.MACAddress); err != nil {
 		return err
 	}
-	return approveSession(a.db, sess.ID, duration)
+	return approveSession(a.db, sess.ID, duration, actor)
 }
 
 // checkClaim grants access to a pending session whose ifay claim is VERIFIED.
@@ -169,7 +169,7 @@ func (a *App) checkClaim(sess PendingSession) bool {
 	if st, err := a.ifay.Status(claimID); err != nil || st != "VERIFIED" {
 		return false
 	}
-	return a.grant(sess, duration) == nil
+	return a.grant(sess, duration, "payment") == nil
 }
 
 func isUniqueViolation(err error) bool {

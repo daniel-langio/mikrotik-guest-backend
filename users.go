@@ -186,7 +186,7 @@ func (a *App) adminDeletePending(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	if err := deletePending(a.db, id); err != nil {
+	if err := deletePending(a.db, id, "admin:"+currentUser(r).Name); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -194,7 +194,7 @@ func (a *App) adminDeletePending(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) adminClearPending(w http.ResponseWriter, r *http.Request) {
-	if err := clearPending(a.db); err != nil {
+	if err := clearPending(a.db, "admin:"+currentUser(r).Name); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
