@@ -6,7 +6,8 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type PendingSession struct {
@@ -21,8 +22,16 @@ type PendingSession struct {
 	ApprovedAt sql.NullTime
 }
 
+// openDB uses the simple protocol: behind a transaction-mode pooler
+// (pgbouncer, Supabase) pgx's cached prepared statements collide across
+// pooled connections ("prepared statement name is already in use").
 func openDB() (*sql.DB, error) {
-	return sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	cfg, err := pgx.ParseConfig(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return nil, err
+	}
+	cfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	return stdlib.OpenDB(*cfg), nil
 }
 
 func insertPending(db *sql.DB, mac, ip, username, router string) (int, error) {
