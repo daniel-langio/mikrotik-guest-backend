@@ -123,7 +123,7 @@ form.approve-form {
   max-width: 100%;
 }
 
-select, input[type="text"], input[type="password"], input[type="number"] {
+select, input[type="text"], input[type="password"], input[type="number"], input[type="tel"] {
   border: 1px solid var(--grey-300);
   border-radius: 4px;
   background: #fff;
@@ -244,3 +244,14 @@ form.approve-form {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
 }
+
+[hidden] { display: none !important; }
+
+form.pay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.pay-form label { text-align: left; font-size: 13px; color: var(--grey-500); }
+.pay-form input, .pay-form select { width: 100%; box-sizing: border-box; margin-top: 4px; }

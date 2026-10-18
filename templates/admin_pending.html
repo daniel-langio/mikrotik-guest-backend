@@ -1,4 +1,7 @@
 <div class="card">
+{{if .}}
+  <div class="item"><form hx-post="/admin/pending/clear" hx-target="#pending" hx-swap="innerHTML" hx-confirm="Delete ALL pending sessions?"><button type="submit" class="btn-danger">Clear all pending</button></form></div>
+{{end}}
 {{range .}}
   <div class="item">
     <div class="row">
@@ -22,6 +25,7 @@
         </span>
         <button type="submit">Approve</button>
       </form>
+      <form hx-post="/admin/pending/delete/{{.ID}}" hx-target="#pending" hx-swap="innerHTML" hx-confirm="Delete this pending session?"><button type="submit" class="btn-danger">Delete</button></form>
     </div>
   </div>
 {{else}}

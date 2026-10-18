@@ -1,0 +1,28 @@
+{{if .Waiting}}
+<p class="status-line"><span class="pulse"></span>Checking payment <b>{{.Ref}}</b>&hellip;</p>
+<p class="status-line">You'll be connected automatically once it's confirmed - no need to refresh.</p>
+<p><button type="button" hx-get="/welcome/pay/{{.ID}}/form" hx-target="#pay" hx-swap="innerHTML">Wrong reference?</button></p>
+{{else if .Receiver}}
+{{if .Error}}<p class="status-line" style="color:#c0392b">{{.Error}}</p>{{end}}
+<form class="pay-form" hx-post="/welcome/pay/{{.ID}}" hx-target="#pay" hx-swap="innerHTML" data-price="{{.Price}}" data-mins="{{.Mins}}">
+  <p class="status-line">{{.Price}} Ar = {{.Mins}} min. Send the money to <b>{{.Receiver}}</b>, then enter the reference from the confirmation SMS.</p>
+  <button type="button" id="mode">Choose by time</button>
+  <label id="price-field">Price (Ar)
+    <input type="number" id="amount" name="amount" min="{{.Price}}" max="{{.Max}}" step="{{.Price}}" value="{{.Price}}" required>
+  </label>
+  <label id="time-field" hidden>Minutes
+    <input type="number" id="minutes" min="{{.Mins}}" step="{{.Mins}}" value="{{.Mins}}">
+  </label>
+  <p class="status-line" id="summary"></p>
+  <select name="provider">
+    <option value="MVOLA">MVola</option>
+    <option value="ORANGE_MONEY">Orange Money</option>
+  </select>
+  <input type="tel" name="phone" placeholder="Your number (034...)" value="{{.FPhone}}" required>
+  <input type="text" name="ref" placeholder="Payment reference" value="{{.FRef}}" required>
+  <button type="submit">Confirm payment</button>
+</form>
+{{else}}
+<p class="status-line"><span class="pulse"></span>Waiting for an administrator to approve your session&hellip;</p>
+<p class="status-line">You'll be connected automatically once approved - no need to refresh.</p>
+{{end}}

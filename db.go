@@ -143,30 +143,69 @@ func getSession(db *sql.DB, id int) (PendingSession, error) {
 
 func approveSession(db *sql.DB, id int, duration string) error {
 	_, err := db.Exec(
-		`UPDATE pending_sessions SET status = 'approved', duration = $1, approved_at = now() WHERE id = $2`,
+		`UPDATE pending_sessions SET status = 'approved', duration = $1, approved_at = now() WHERE id = $2 AND status = 'pending'`,
 		duration, id,
 	)
 	return err
 }
 
-func createAdminSession(db *sql.DB, token string, ttl time.Duration) error {
+func createAdminSession(db *sql.DB, token string, ttl time.Duration, username string, isAdmin bool) error {
 	_, err := db.Exec(
-		`INSERT INTO admin_sessions (token, expires_at) VALUES ($1, now() + $2::interval)`,
-		token, fmt.Sprintf("%d seconds", int(ttl.Seconds())),
+		`INSERT INTO admin_sessions (token, expires_at, username, is_admin) VALUES ($1, now() + $2::interval, $3, $4)`,
+		token, fmt.Sprintf("%d seconds", int(ttl.Seconds())), username, isAdmin,
 	)
 	return err
 }
 
-func validAdminSession(db *sql.DB, token string) bool {
-	var exists bool
-	_ = db.QueryRow(
-		`SELECT EXISTS(SELECT 1 FROM admin_sessions WHERE token = $1 AND expires_at > now())`,
+func getAdminSession(db *sql.DB, token string) (username string, isAdmin, ok bool) {
+	err := db.QueryRow(
+		`SELECT username, is_admin FROM admin_sessions WHERE token = $1 AND expires_at > now()`,
 		token,
-	).Scan(&exists)
-	return exists
+	).Scan(&username, &isAdmin)
+	return username, isAdmin, err == nil
 }
 
 func deleteAdminSession(db *sql.DB, token string) error {
 	_, err := db.Exec(`DELETE FROM admin_sessions WHERE token = $1`, token)
+	return err
+}
+
+// getClaim returns this session's Mobile Money claim; claimID is "" until filed with ifay.
+func getClaim(db *sql.DB, id int) (ref, claimID string, amount int, err error) {
+	err = db.QueryRow(
+		`SELECT COALESCE(psp_ref, ''), COALESCE(claim_id, ''), COALESCE(amount, 0) FROM pending_sessions WHERE id = $1`,
+		id,
+	).Scan(&ref, &claimID, &amount)
+	return
+}
+
+// reserveRef claims (provider, ref) for a pending session before ifay is
+// called; the unique index rejects a ref already used by another guest.
+// sql.ErrNoRows means the session isn't pending any more.
+func reserveRef(db *sql.DB, id int, provider, ref string, amount int) error {
+	var got int
+	return db.QueryRow(
+		`UPDATE pending_sessions SET provider = $1, psp_ref = $2, amount = $3, claim_id = NULL
+		 WHERE id = $4 AND status = 'pending' RETURNING id`,
+		provider, ref, amount, id,
+	).Scan(&got)
+}
+
+func setClaimID(db *sql.DB, id int, claimID string) error {
+	_, err := db.Exec(`UPDATE pending_sessions SET claim_id = $1 WHERE id = $2`, claimID, id)
+	return err
+}
+
+func clearClaim(db *sql.DB, id int) {
+	db.Exec(`UPDATE pending_sessions SET provider = NULL, psp_ref = NULL, amount = NULL, claim_id = NULL WHERE id = $1`, id)
+}
+
+func deletePending(db *sql.DB, id int) error {
+	_, err := db.Exec(`DELETE FROM pending_sessions WHERE id = $1 AND status = 'pending'`, id)
+	return err
+}
+
+func clearPending(db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM pending_sessions WHERE status = 'pending'`)
 	return err
 }

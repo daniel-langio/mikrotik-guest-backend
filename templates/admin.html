@@ -12,7 +12,7 @@
   <div class="appbar">
     <div>
       <h1>Aphrodite</h1>
-      <p class="subtitle">Guest Portal Admin</p>
+      <p class="subtitle">Guest Portal &middot; {{.Username}}</p>
     </div>
     <form method="post" action="/logout"><button type="submit">Log out</button></form>
   </div>
@@ -22,6 +22,13 @@
 
     <h2>Active sessions</h2>
     <div id="active" hx-get="/admin/active" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+{{if .IsAdmin}}
+    <h2>Operators</h2>
+    <div id="users" hx-get="/admin/users" hx-trigger="load" hx-swap="innerHTML"></div>
+
+    <h2>Login history</h2>
+    <div id="history" hx-get="/admin/history" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
+{{end}}
   </div>
 </body>
 </html>

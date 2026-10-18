@@ -20,7 +20,7 @@ func main() {
 	if len(routers) == 0 {
 		log.Fatal("ROUTERS is empty - need at least one name|host:port|user|pass entry")
 	}
-	app := &App{db: db, routers: routers, defaultRouter: defaultRouter}
+	app := &App{db: db, routers: routers, defaultRouter: defaultRouter, ifay: ifayFromEnv()}
 
 	mux := http.NewServeMux()
 	staticFiles := http.StripPrefix("/static/", http.FileServer(http.Dir("static")))
@@ -32,12 +32,20 @@ func main() {
 	}))
 	mux.HandleFunc("GET /welcome", app.welcome)
 	mux.HandleFunc("GET /welcome/status/{id}", app.welcomeStatus)
+	mux.HandleFunc("POST /welcome/pay/{id}", app.pay)
+	mux.HandleFunc("GET /welcome/pay/{id}/form", app.payForm)
 	mux.HandleFunc("GET /login", app.loginPage)
 	mux.HandleFunc("POST /login", app.login)
 	mux.HandleFunc("POST /logout", app.logout)
 	mux.HandleFunc("GET /admin", app.requireAuth(app.adminPage))
 	mux.HandleFunc("GET /admin/pending", app.requireAuth(app.adminPending))
 	mux.HandleFunc("GET /admin/active", app.requireAuth(app.adminActive))
+	mux.HandleFunc("GET /admin/users", app.requireAdmin(app.adminUsers))
+	mux.HandleFunc("POST /admin/users", app.requireAdmin(app.adminCreateUser))
+	mux.HandleFunc("POST /admin/users/delete/{username}", app.requireAdmin(app.adminDeleteUser))
+	mux.HandleFunc("GET /admin/history", app.requireAdmin(app.adminHistory))
+	mux.HandleFunc("POST /admin/pending/delete/{id}", app.requireAuth(app.adminDeletePending))
+	mux.HandleFunc("POST /admin/pending/clear", app.requireAuth(app.adminClearPending))
 	mux.HandleFunc("POST /admin/approve/{id}", app.requireAuth(app.approve))
 	mux.HandleFunc("POST /admin/disconnect/{id}", app.requireAuth(app.adminDisconnect))
 

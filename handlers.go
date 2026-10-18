@@ -49,6 +49,7 @@ type App struct {
 	db            *sql.DB
 	routers       map[string]MikroTikClient
 	defaultRouter string
+	ifay          *Ifay // nil = manual admin approval only
 }
 
 // router returns the client for name, falling back to the default router if
@@ -81,7 +82,7 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	// rather than minting a new GUEST-xxxx account and orphaning whatever
 	// row the admin is currently looking at.
 	if sess, err := getOpenSessionByMAC(a.db, mac); err == nil {
-		tmpl.ExecuteTemplate(w, "welcome.html", map[string]any{"Username": sess.Username, "ID": sess.ID})
+		tmpl.ExecuteTemplate(w, "welcome.html", a.payData(sess))
 		return
 	} else if err != sql.ErrNoRows {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -94,11 +95,11 @@ func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "welcome.html", map[string]any{"Username": username, "ID": id})
+	tmpl.ExecuteTemplate(w, "welcome.html", a.payData(PendingSession{ID: id, Username: username}))
 }
 
 // welcomeStatus is polled by the guest's own welcome page. Once an admin
-// approves the session, it tells htmx to redirect the browser (HX-Redirect)
+// approves the session (or the guest's Mobile Money claim verifies), it tells htmx to redirect the browser (HX-Redirect)
 // instead of swapping any content - the guest never has to do anything.
 func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
@@ -111,13 +112,14 @@ func (a *App) welcomeStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if sess.Status == "approved" {
+	if sess.Status == "approved" || a.checkClaim(sess) {
 		w.Header().Set("HX-Redirect", redirectURL())
 	}
 }
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
-	tmpl.ExecuteTemplate(w, "admin.html", nil)
+	u := currentUser(r)
+	tmpl.ExecuteTemplate(w, "admin.html", map[string]any{"Username": u.Name, "IsAdmin": u.IsAdmin})
 }
 
 func (a *App) adminPending(w http.ResponseWriter, r *http.Request) {
