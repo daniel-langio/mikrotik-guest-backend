@@ -62,17 +62,24 @@ document.addEventListener('htmx:sendError', function () {
   showToast('Network error - could not reach the server', true);
 });
 
-// Skip a poll entirely while the admin is actively focused inside that
-// panel (typing a custom duration, etc). hx-preserve only keeps values
-// around post-swap - it still replaces the DOM node, which drops focus
-// every cycle. Skipping the request outright avoids both problems; polling
-// resumes on its own next tick once they click away.
+// Skip a poll while the admin is interacting with that panel (typing a
+// custom duration, picking from a select, etc). hx-preserve only keeps values
+// around post-swap - it still replaces the DOM node, which drops focus and
+// closes an open select every cycle. Mobile browsers don't reliably report an
+// open native select picker as document.activeElement, so besides the focus
+// check, any touch/focus/input in the panel also holds polling for 15s. Only
+// the panel's own poll is skipped (e.target === el), never a click's POST.
 ['pending', 'active'].forEach(function (id) {
   var el = document.getElementById(id);
   if (!el) return;
-  el.addEventListener('htmx:beforeRequest', function (e) {
-    if (el.contains(document.activeElement) && document.activeElement !== document.body) {
-      e.preventDefault();
-    }
+  var holdUntil = 0;
+  ['pointerdown', 'touchstart', 'focusin', 'input', 'change'].forEach(function (type) {
+    el.addEventListener(type, function () { holdUntil = Date.now() + 15000; }, true);
   });
+  el.addEventListener('htmx:beforeRequest', function (e) {
+    if (e.target !== el) return;
+    var focused = el.contains(document.activeElement) && document.activeElement !== document.body;
+    if (focused || Date.now() < holdUntil) e.preventDefault();
+  });
+  el.addEventListener('htmx:afterSwap', function () { holdUntil = 0; });
 });
