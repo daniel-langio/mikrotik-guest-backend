@@ -190,8 +190,10 @@ button.btn-danger:hover { background: var(--danger-dark); }
 .appbar button:hover { background: rgba(255, 255, 255, 0.25); }
 
 /* htmx adds .htmx-request to the element with hx-post while the request is
-   in flight - gives immediate feedback that a click registered. */
-.htmx-request button, button.htmx-request {
+   in flight - gives immediate feedback that a click registered. Scoped to
+   forms: the polled panels (#pending, #active) get .htmx-request every poll,
+   which made every button inside them flash. */
+form.htmx-request button, button.htmx-request {
   background: var(--primary);
 }
 
