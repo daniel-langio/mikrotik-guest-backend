@@ -35,6 +35,7 @@ type MikroTikClient interface {
 	Connections() ([]Conn, error)
 	DNSNames() (map[string]string, error)
 	OnlineMACs() (map[string]bool, error)
+	AllowVideoHosts(allow bool) error
 }
 
 // Conn is one entry of the router's connection-tracking table.
@@ -233,4 +234,47 @@ func (c *routerOSClient) OnlineMACs() (map[string]bool, error) {
 		}
 	}
 	return macs, nil
+}
+
+// wgComment tags the walled-garden entries we own, so they can be found and
+// removed without touching the router's other (pre-existing) entries.
+const wgComment = "aphrodite-service-off"
+
+// videoHosts are what the YouTube embed player needs before login. Wildcards
+// are broad on purpose (googleapis/gstatic cover the player's API and assets);
+// they are only whitelisted while the service is switched off.
+var videoHosts = []string{
+	"*.youtube.com", "*.youtube-nocookie.com", "*.ytimg.com",
+	"*.googlevideo.com", "*.googleapis.com", "*.gstatic.com", "*.ggpht.com",
+}
+
+// AllowVideoHosts opens (allow) or closes the YouTube hosts in the guest
+// hotspot's walled garden, so the "service disabled" video can play to guests
+// who aren't logged in. Idempotent: it first clears our own entries.
+func (c *routerOSClient) AllowVideoHosts(allow bool) error {
+	client, err := c.dial()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/ip/hotspot/walled-garden/print", "?comment="+wgComment)
+	if err != nil {
+		return err
+	}
+	for _, re := range reply.Re {
+		if _, err := client.Run("/ip/hotspot/walled-garden/remove", "=.id="+re.Map[".id"]); err != nil {
+			return err
+		}
+	}
+	if !allow {
+		return nil
+	}
+	for _, h := range videoHosts {
+		if _, err := client.Run("/ip/hotspot/walled-garden/add",
+			"=dst-host="+h, "=server=GuestPortal", "=action=allow", "=comment="+wgComment); err != nil {
+			return err
+		}
+	}
+	return nil
 }

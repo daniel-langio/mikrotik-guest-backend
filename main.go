@@ -23,6 +23,7 @@ func main() {
 	app := &App{db: db, routers: routers, defaultRouter: defaultRouter, ifay: ifayFromEnv()}
 
 	go app.collectLoop()
+	go app.syncVideoHosts() // routers must match the switch after a restart or a router reboot
 	mux := app.routes()
 
 	port := os.Getenv("PORT")

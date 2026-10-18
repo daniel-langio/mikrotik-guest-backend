@@ -2,10 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // Kill switch: while "service_disabled" is set, new guests can't connect (no
@@ -57,11 +59,35 @@ func pickVideo(db *sql.DB) string {
 	return ids[rand.Intn(len(ids))]
 }
 
-func (a *App) renderService(w http.ResponseWriter, r *http.Request) {
+func (a *App) renderService(w http.ResponseWriter, r *http.Request, failed ...string) {
 	render(w, r, "admin_service.html", map[string]any{
 		"Disabled": serviceDisabled(a.db),
 		"Videos":   getSetting(a.db, "disabled_videos"),
+		"Failed":   strings.Join(failed, ", "),
 	})
+}
+
+// syncVideoHosts makes every router's walled garden match the switch: YouTube
+// whitelisted while the service is off, removed while it is on. Routers are
+// contacted in parallel; the names of the ones that failed come back.
+func (a *App) syncVideoHosts() (failed []string) {
+	disabled := serviceDisabled(a.db)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for name, mt := range a.routers {
+		wg.Add(1)
+		go func(name string, mt MikroTikClient) {
+			defer wg.Done()
+			if err := mt.AllowVideoHosts(disabled); err != nil {
+				log.Printf("walled garden %s: %v", name, err)
+				mu.Lock()
+				failed = append(failed, name)
+				mu.Unlock()
+			}
+		}(name, mt)
+	}
+	wg.Wait()
+	return failed
 }
 
 func (a *App) adminService(w http.ResponseWriter, r *http.Request) { a.renderService(w, r) }
@@ -82,7 +108,7 @@ func (a *App) adminServiceSet(disabled bool) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		a.renderService(w, r)
+		a.renderService(w, r, a.syncVideoHosts()...)
 	}
 }
 

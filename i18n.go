@@ -167,6 +167,7 @@ var dict = map[string]map[string]string{
 		"service.videos":      "Vidéos YouTube à afficher (une URL par ligne ; vide = vidéos par défaut)",
 		"service.guest_title": "Service désactivé par l'admin",
 		"service.guest_text":  "La connexion est temporairement indisponible. En attendant, regardez une vidéo :",
+		"service.router_warn": "Routeur injoignable : %s - la liste blanche YouTube n'a pas été mise à jour.",
 	},
 	"mg": {
 		"welcome.title":       "Tongasoa",
@@ -324,6 +325,7 @@ var dict = map[string]map[string]string{
 		"service.videos":      "Video YouTube aseho (URL isaky ny andalana; foana = video efa voafidy)",
 		"service.guest_title": "Serivisy novonoin'ny mpitantana",
 		"service.guest_text":  "Tsy azo atao ny fifandraisana ankehitriny. Mandritra izay, jereo video:",
+		"service.router_warn": "Tsy tafiditra ny routeur: %s - tsy nohavaozina ny lisitry ny YouTube.",
 	},
 }
 

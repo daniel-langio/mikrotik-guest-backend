@@ -193,3 +193,22 @@ func TestPagerAndRows(t *testing.T) {
 		}
 	}
 }
+
+func TestVideoHostsAreWildcardedAndNonEmpty(t *testing.T) {
+	if len(videoHosts) == 0 {
+		t.Fatal("no hosts to whitelist")
+	}
+	for _, h := range videoHosts {
+		if !strings.HasPrefix(h, "*.") || strings.Count(h, ".") < 2 {
+			t.Errorf("unexpected walled-garden host %q", h)
+		}
+	}
+	if wgComment == "" {
+		t.Error("entries must be tagged so removal never touches other walled-garden rules")
+	}
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/admin/service", nil), "admin_service.html", map[string]any{"Failed": "aphrodite"})
+	if !strings.Contains(html.UnescapeString(w.Body.String()), "Routeur injoignable : aphrodite") {
+		t.Error("router failure must be shown in the service panel")
+	}
+}
