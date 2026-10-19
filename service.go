@@ -14,12 +14,11 @@ import (
 // payment, no open-portal grant) and see a message plus a random YouTube
 // video instead. Sessions that are already approved keep running.
 
-// Videos shown while the service is switched off: the admin's own list if set,
-// otherwise these. YouTube's HTTPS hosts must be reachable before login for
-// them to play (see the router's walled garden); guests whose connection blocks
-// them can tap "video doesn't show?" to get a bundled clip from this portal's
-// own domain (static/fallback, Blender Foundation open movies, CC BY 4.0).
-var defaultVideos = []string{"RHQMl7SLp8s", "_H9ucMJfmpU", "Wg_jwgmwt-U", "OtunhUigXBE"}
+// The fallback is a clip hosted on this portal's own domain (static/fallback):
+// a guest who isn't logged in can reach the portal host, while YouTube's HTTPS
+// hosts can't be opened through the hotspot walled garden. Clips are from the
+// Blender Foundation open movies (CC BY 4.0). Optional YouTube URLs set in the
+// admin panel take over when the router lets YouTube through.
 
 var ytID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 var ytURL = regexp.MustCompile(`(?:v=|youtu\.be/|embed/|shorts/|live/)([A-Za-z0-9_-]{11})`)
@@ -63,24 +62,17 @@ func fallbackClips() []string {
 	return files
 }
 
-// pickVideo returns a random video id from the admin's list, else the defaults.
-func pickVideo(db *sql.DB) string {
-	ids := parseVideoIDs(getSetting(db, "disabled_videos"))
-	if len(ids) == 0 {
-		ids = defaultVideos
+// pickFallback returns a random admin-configured YouTube id if any, else a
+// random bundled clip; exactly one of the two results is non-empty (both are
+// empty only when there are no clips at all).
+func pickFallback(db *sql.DB) (clip, youtubeID string) {
+	if ids := parseVideoIDs(getSetting(db, "disabled_videos")); len(ids) > 0 {
+		return "", ids[rand.Intn(len(ids))]
 	}
-	return ids[rand.Intn(len(ids))]
-}
-
-// welcomeClip swaps the YouTube embed for a bundled clip, for guests whose
-// connection doesn't let YouTube through.
-func (a *App) welcomeClip(w http.ResponseWriter, r *http.Request) {
-	clips := fallbackClips()
-	if len(clips) == 0 {
-		http.NotFound(w, r)
-		return
+	if clips := fallbackClips(); len(clips) > 0 {
+		return clips[rand.Intn(len(clips))], ""
 	}
-	render(w, r, "clip.html", map[string]any{"Clip": clips[rand.Intn(len(clips))]})
+	return "", ""
 }
 
 func (a *App) renderService(w http.ResponseWriter, r *http.Request) {

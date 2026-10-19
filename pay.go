@@ -63,7 +63,7 @@ func (a *App) payData(sess PendingSession) map[string]any {
 	d["MAC"] = sess.MACAddress
 	if sess.Status == "pending" && serviceDisabled(a.db) {
 		d["Disabled"] = true
-		d["Video"] = pickVideo(a.db)
+		d["Clip"], d["Video"] = pickFallback(a.db)
 	}
 	return d
 }

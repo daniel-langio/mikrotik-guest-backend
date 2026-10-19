@@ -6,10 +6,13 @@
 {{else if .Disabled}}
 <h3 class="svc-off">{{t "service.guest_title"}}</h3>
 <p class="status-line">{{t "service.guest_text"}}</p>
-<div class="fallback">
-  <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/{{.Video}}?autoplay=1&mute=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="video"></iframe></div>
-  <p><button type="button" class="btn-secondary" hx-get="/welcome/clip" hx-target="closest .fallback" hx-swap="innerHTML">{{t "service.no_video"}}</button></p>
-</div>
+{{if .Clip}}
+<video class="clip" src="{{.Clip}}" autoplay muted loop playsinline controls preload="auto"></video>
+<p class="meta">{{t "service.credit"}}</p>
+{{else if .Video}}
+<div class="video"><iframe src="https://www.youtube-nocookie.com/embed/{{.Video}}?autoplay=1&mute=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="video"></iframe></div>
+<p><a class="btn btn-link" href="https://www.youtube.com/watch?v={{.Video}}" target="_blank" rel="noopener">{{t "service.watch_yt"}}</a></p>
+{{end}}
 {{else if .Waiting}}
 <p class="status-line"><span class="pulse"></span>{{t "pay.checking"}} <b>{{.Ref}}</b>&hellip;</p>
 <p class="status-line">{{t "pay.auto_confirm"}}</p>
