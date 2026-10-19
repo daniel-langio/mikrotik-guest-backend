@@ -169,6 +169,7 @@ var dict = map[string]map[string]string{
 		"service.guest_text":  "La connexion est temporairement indisponible. En attendant, regardez une vidéo :",
 		"service.watch_yt":    "Regarder sur YouTube",
 		"service.credit":      "Extrait : Blender Foundation, licence CC BY 4.0",
+		"service.no_video":    "La vidéo ne s'affiche pas ?",
 	},
 	"mg": {
 		"welcome.title":       "Tongasoa",
@@ -328,6 +329,7 @@ var dict = map[string]map[string]string{
 		"service.guest_text":  "Tsy azo atao ny fifandraisana ankehitriny. Mandritra izay, jereo video:",
 		"service.watch_yt":    "Jereo ao amin'ny YouTube",
 		"service.credit":      "Ampahany: Blender Foundation, fahazoan-dalana CC BY 4.0",
+		"service.no_video":    "Tsy miseho ve ny video?",
 	},
 }
 

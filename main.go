@@ -73,6 +73,7 @@ func (a *App) routes() *http.ServeMux {
 	mux.HandleFunc("POST /consent/withdraw", a.consentWithdraw)
 	mux.HandleFunc("GET /admin/activity", a.requireAdmin(a.adminActivity))
 	mux.HandleFunc("GET /admin/activity.csv", a.requireAdmin(a.adminActivityCSV))
+	mux.HandleFunc("GET /welcome/clip", a.welcomeClip)
 	mux.HandleFunc("GET /welcome/redirect", a.welcomeRedirect)
 	mux.HandleFunc("POST /welcome/pay/{id}", a.pay)
 	mux.HandleFunc("GET /welcome/pay/{id}/form", a.payForm)

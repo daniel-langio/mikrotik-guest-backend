@@ -37,7 +37,7 @@ func TestLegalLineInsteadOfGate(t *testing.T) {
 }
 
 func TestServiceDisabledScreen(t *testing.T) {
-	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Clip": "/static/fallback/sintel.mp4",
+	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Video": "RHQMl7SLp8s",
 		"Receiver": "+261329977335", "Price": 100, "Mins": 3, "Max": 50000}
 	w := httptest.NewRecorder()
 	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
@@ -45,13 +45,23 @@ func TestServiceDisabledScreen(t *testing.T) {
 	if h := w.Header().Get("Referrer-Policy"); h != "strict-origin-when-cross-origin" {
 		t.Errorf("Referrer-Policy = %q (YouTube error 153 without a Referer)", h)
 	}
-	for _, want := range []string{"Service désactivé par l'admin", `<video class="clip" src="/static/fallback/sintel.mp4"`, "CC BY 4.0", "status/7?g=1"} {
+	for _, want := range []string{"Service désactivé par l'admin", "youtube-nocookie.com/embed/RHQMl7SLp8s", `referrerpolicy="strict-origin-when-cross-origin"`,
+		"La vidéo ne s'affiche pas ?", `hx-get="/welcome/clip"`, "status/7?g=1"} {
 		if !strings.Contains(b, want) {
 			t.Errorf("disabled screen missing %q", want)
 		}
 	}
 	if strings.Contains(b, `name="provider"`) || strings.Contains(b, "Approuver maintenant") {
 		t.Error("no way to connect while the service is disabled")
+	}
+}
+
+func TestWelcomeClipFallback(t *testing.T) {
+	w := httptest.NewRecorder()
+	(&App{}).welcomeClip(w, httptest.NewRequest("GET", "/welcome/clip", nil))
+	b := w.Body.String()
+	if w.Code != 200 || !strings.Contains(b, `<video class="clip" src="/static/fallback/`) || !strings.Contains(b, "CC BY 4.0") {
+		t.Errorf("clip fragment wrong: %d %s", w.Code, b)
 	}
 }
 
@@ -193,18 +203,22 @@ func TestPagerAndRows(t *testing.T) {
 	}
 }
 
-func TestServiceDisabledYouTubeOverride(t *testing.T) {
-	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Video": "YE7VzlLtp-4"}
-	w := httptest.NewRecorder()
-	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
-	b := html.UnescapeString(w.Body.String())
-	for _, want := range []string{"youtube-nocookie.com/embed/YE7VzlLtp-4", `referrerpolicy="strict-origin-when-cross-origin"`, "Regarder sur YouTube"} {
-		if !strings.Contains(b, want) {
-			t.Errorf("YouTube override missing %q", want)
+func TestDefaultVideos(t *testing.T) {
+	if len(defaultVideos) != 4 {
+		t.Fatalf("defaultVideos = %v", defaultVideos)
+	}
+	for _, id := range defaultVideos {
+		if !ytID.MatchString(id) {
+			t.Errorf("default video %q is not a valid id", id)
 		}
 	}
-	if strings.Contains(b, "<video") {
-		t.Error("a configured YouTube video replaces the bundled clip")
+	// the user's own links (with ?si= tracking parameters) must parse to the same ids
+	got := parseVideoIDs("https://youtu.be/RHQMl7SLp8s?si=92XlMeSXdpcXP7L2\nhttps://youtu.be/_H9ucMJfmpU?si=fo5R_U-glIj1LNjH\nhttps://youtu.be/Wg_jwgmwt-U?si=8Cbk0WCNKE_KigUB\nhttps://youtu.be/OtunhUigXBE?si=C6mfCM80CM2dqw58")
+	for i, id := range defaultVideos {
+		if i >= len(got) || got[i] != id {
+			t.Errorf("parsed %v, want %v", got, defaultVideos)
+			break
+		}
 	}
 }
 
