@@ -337,3 +337,5 @@ h3.svc-off { color: #b71c1c; margin: 6px 0; }
 .svc-videos textarea { width: 100%; margin-top: 4px; border: 1px solid var(--grey-300); border-radius: 4px; padding: 7px 10px; font-size: 13px; }
 
 a.btn-link { display: inline-block; margin-top: 10px; text-decoration: none; }
+
+.clip { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; }

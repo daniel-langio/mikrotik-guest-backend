@@ -3,6 +3,7 @@ package main
 import (
 	"html"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func TestLegalLineInsteadOfGate(t *testing.T) {
 }
 
 func TestServiceDisabledScreen(t *testing.T) {
-	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Video": "YE7VzlLtp-4",
+	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Clip": "/static/fallback/sintel.mp4",
 		"Receiver": "+261329977335", "Price": 100, "Mins": 3, "Max": 50000}
 	w := httptest.NewRecorder()
 	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
@@ -44,8 +45,7 @@ func TestServiceDisabledScreen(t *testing.T) {
 	if h := w.Header().Get("Referrer-Policy"); h != "strict-origin-when-cross-origin" {
 		t.Errorf("Referrer-Policy = %q (YouTube error 153 without a Referer)", h)
 	}
-	for _, want := range []string{"Service désactivé par l'admin", "youtube-nocookie.com/embed/YE7VzlLtp-4", "status/7?g=1",
-		`referrerpolicy="strict-origin-when-cross-origin"`, "https://www.youtube.com/watch?v=YE7VzlLtp-4", "Regarder sur YouTube"} {
+	for _, want := range []string{"Service désactivé par l'admin", `<video class="clip" src="/static/fallback/sintel.mp4"`, "CC BY 4.0", "status/7?g=1"} {
 		if !strings.Contains(b, want) {
 			t.Errorf("disabled screen missing %q", want)
 		}
@@ -65,11 +65,6 @@ func TestParseVideoIDs(t *testing.T) {
 	for i := range want {
 		if got[i] != want[i] {
 			t.Errorf("[%d] = %q, want %q", i, got[i], want[i])
-		}
-	}
-	for _, id := range defaultVideos {
-		if !ytID.MatchString(id) {
-			t.Errorf("default video %q is not a valid id", id)
 		}
 	}
 }
@@ -198,21 +193,30 @@ func TestPagerAndRows(t *testing.T) {
 	}
 }
 
-func TestVideoHostsAreWildcardedAndNonEmpty(t *testing.T) {
-	if len(videoHosts) == 0 {
-		t.Fatal("no hosts to whitelist")
-	}
-	for _, h := range videoHosts {
-		if h != strings.ToLower(h) || strings.Count(h, ".") < 1 || strings.Contains(h, "/") || strings.Contains(h, " ") {
-			t.Errorf("unexpected walled-garden host %q", h)
+func TestServiceDisabledYouTubeOverride(t *testing.T) {
+	data := map[string]any{"ID": 7, "MAC": "AA", "Username": "GUEST-X", "Disabled": true, "Video": "YE7VzlLtp-4"}
+	w := httptest.NewRecorder()
+	render(w, httptest.NewRequest("GET", "/welcome", nil), "welcome.html", data)
+	b := html.UnescapeString(w.Body.String())
+	for _, want := range []string{"youtube-nocookie.com/embed/YE7VzlLtp-4", `referrerpolicy="strict-origin-when-cross-origin"`, "Regarder sur YouTube"} {
+		if !strings.Contains(b, want) {
+			t.Errorf("YouTube override missing %q", want)
 		}
 	}
-	if wgComment == "" {
-		t.Error("entries must be tagged so removal never touches other walled-garden rules")
+	if strings.Contains(b, "<video") {
+		t.Error("a configured YouTube video replaces the bundled clip")
 	}
-	w := httptest.NewRecorder()
-	render(w, httptest.NewRequest("GET", "/admin/service", nil), "admin_service.html", map[string]any{"Failed": "aphrodite"})
-	if !strings.Contains(html.UnescapeString(w.Body.String()), "Routeur injoignable : aphrodite") {
-		t.Error("router failure must be shown in the service panel")
+}
+
+func TestBundledClipsExist(t *testing.T) {
+	clips := fallbackClips()
+	if len(clips) < 2 {
+		t.Fatalf("want at least 2 bundled clips, got %v", clips)
+	}
+	for _, c := range clips {
+		st, err := os.Stat(strings.TrimPrefix(c, "/"))
+		if err != nil || st.Size() < 100_000 || st.Size() > 6_000_000 {
+			t.Errorf("clip %s: %v size %v (expected a small real video)", c, err, st)
+		}
 	}
 }

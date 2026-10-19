@@ -1,7 +1,6 @@
 <div class="card">
   <div class="item">
     <div class="name"><span class="dot {{if .Disabled}}dot-offline{{end}}"></span>{{if .Disabled}}{{t "service.off_state"}}{{else}}{{t "service.on_state"}}{{end}}</div>
-    {{if .Failed}}<p class="status-line" style="color:#c0392b">{{t "service.router_warn" .Failed}}</p>{{end}}
     <label class="svc-videos">{{t "service.videos"}}
       <textarea id="svc-videos" name="videos" rows="3" placeholder="https://www.youtube.com/watch?v=...">{{.Videos}}</textarea>
     </label>

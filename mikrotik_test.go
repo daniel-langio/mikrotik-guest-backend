@@ -29,7 +29,7 @@ func (f *fakeMikroTik) OnlineMACs() (map[string]bool, error) {
 	return map[string]bool{"AA:BB:CC:DD:EE:FF": true}, nil
 }
 
-func (f *fakeMikroTik) AllowVideoHosts(allow bool) error { return nil }
+func (f *fakeMikroTik) ClearVideoHosts() error { return nil }
 
 func TestFakeMikroTik_RecordsCalls(t *testing.T) {
 	fake := &fakeMikroTik{}

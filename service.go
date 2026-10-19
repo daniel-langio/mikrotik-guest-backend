@@ -5,17 +5,20 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 // Kill switch: while "service_disabled" is set, new guests can't connect (no
 // payment, no open-portal grant) and see a message plus a random YouTube
 // video instead. Sessions that are already approved keep running.
 
-// Official Blender open movies: long-lived, embeddable, free to show.
-var defaultVideos = []string{"YE7VzlLtp-4", "eRsGyueVLvQ", "R6MlUcmOul8", "TLkA0RELQ1g", "WhWc3b3KhnY", "Y-rmzh0PI3c"}
+// The fallback is a clip hosted on this portal's own domain (static/fallback):
+// a guest who isn't logged in can reach the portal host, while YouTube's HTTPS
+// hosts can't be opened through the hotspot walled garden. Clips are from the
+// Blender Foundation open movies (CC BY 4.0). Optional YouTube URLs set in the
+// admin panel take over when the router lets YouTube through.
 
 var ytID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 var ytURL = regexp.MustCompile(`(?:v=|youtu\.be/|embed/|shorts/|live/)([A-Za-z0-9_-]{11})`)
@@ -50,44 +53,45 @@ func serviceDisabled(db *sql.DB) bool {
 	return getSetting(db, "service_disabled") == "1"
 }
 
-// pickVideo returns a random configured video, or a random default.
-func pickVideo(db *sql.DB) string {
-	ids := parseVideoIDs(getSetting(db, "disabled_videos"))
-	if len(ids) == 0 {
-		ids = defaultVideos
+// fallbackClips lists the bundled clips as URL paths.
+func fallbackClips() []string {
+	files, _ := filepath.Glob("static/fallback/*.mp4")
+	for i, f := range files {
+		files[i] = "/" + filepath.ToSlash(f)
 	}
-	return ids[rand.Intn(len(ids))]
+	return files
 }
 
-func (a *App) renderService(w http.ResponseWriter, r *http.Request, failed ...string) {
+// pickFallback returns a random admin-configured YouTube id if any, else a
+// random bundled clip; exactly one of the two results is non-empty (both are
+// empty only when there are no clips at all).
+func pickFallback(db *sql.DB) (clip, youtubeID string) {
+	if ids := parseVideoIDs(getSetting(db, "disabled_videos")); len(ids) > 0 {
+		return "", ids[rand.Intn(len(ids))]
+	}
+	if clips := fallbackClips(); len(clips) > 0 {
+		return clips[rand.Intn(len(clips))], ""
+	}
+	return "", ""
+}
+
+func (a *App) renderService(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "admin_service.html", map[string]any{
 		"Disabled": serviceDisabled(a.db),
 		"Videos":   getSetting(a.db, "disabled_videos"),
-		"Failed":   strings.Join(failed, ", "),
 	})
 }
 
-// syncVideoHosts makes every router's walled garden match the switch: YouTube
-// whitelisted while the service is off, removed while it is on. Routers are
-// contacted in parallel; the names of the ones that failed come back.
-func (a *App) syncVideoHosts() (failed []string) {
-	disabled := serviceDisabled(a.db)
-	var mu sync.Mutex
-	var wg sync.WaitGroup
+// clearWalledGarden removes the YouTube walled-garden entries an earlier
+// version added to the routers (idempotent; remove this once routers are clean).
+func (a *App) clearWalledGarden() {
 	for name, mt := range a.routers {
-		wg.Add(1)
 		go func(name string, mt MikroTikClient) {
-			defer wg.Done()
-			if err := mt.AllowVideoHosts(disabled); err != nil {
-				log.Printf("walled garden %s: %v", name, err)
-				mu.Lock()
-				failed = append(failed, name)
-				mu.Unlock()
+			if err := mt.ClearVideoHosts(); err != nil {
+				log.Printf("walled garden cleanup %s: %v", name, err)
 			}
 		}(name, mt)
 	}
-	wg.Wait()
-	return failed
 }
 
 func (a *App) adminService(w http.ResponseWriter, r *http.Request) { a.renderService(w, r) }
@@ -108,7 +112,7 @@ func (a *App) adminServiceSet(disabled bool) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		a.renderService(w, r, a.syncVideoHosts()...)
+		a.renderService(w, r)
 	}
 }
 

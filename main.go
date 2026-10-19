@@ -23,7 +23,7 @@ func main() {
 	app := &App{db: db, routers: routers, defaultRouter: defaultRouter, ifay: ifayFromEnv()}
 
 	go app.collectLoop()
-	go app.syncVideoHosts() // routers must match the switch after a restart or a router reboot
+	go app.clearWalledGarden() // drop the YouTube entries an earlier version left on the routers
 	mux := app.routes()
 
 	port := os.Getenv("PORT")
