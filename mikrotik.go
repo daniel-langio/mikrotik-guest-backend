@@ -244,8 +244,9 @@ const wgComment = "aphrodite-service-off"
 // are broad on purpose (googleapis/gstatic cover the player's API and assets);
 // they are only whitelisted while the service is switched off.
 var videoHosts = []string{
-	"*.youtube.com", "*.youtube-nocookie.com", "*.ytimg.com",
+	"youtube.com", "*.youtube.com", "*.youtube-nocookie.com", "*.ytimg.com",
 	"*.googlevideo.com", "*.googleapis.com", "*.gstatic.com", "*.ggpht.com",
+	"google.com", "*.google.com",
 }
 
 // AllowVideoHosts opens (allow) or closes the YouTube hosts in the guest

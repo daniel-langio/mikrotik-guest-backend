@@ -203,7 +203,7 @@ func TestVideoHostsAreWildcardedAndNonEmpty(t *testing.T) {
 		t.Fatal("no hosts to whitelist")
 	}
 	for _, h := range videoHosts {
-		if !strings.HasPrefix(h, "*.") || strings.Count(h, ".") < 2 {
+		if h != strings.ToLower(h) || strings.Count(h, ".") < 1 || strings.Contains(h, "/") || strings.Contains(h, " ") {
 			t.Errorf("unexpected walled-garden host %q", h)
 		}
 	}
