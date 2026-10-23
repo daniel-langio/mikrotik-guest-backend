@@ -24,6 +24,9 @@
 
     <h2>{{t "open.title"}}</h2>
     <div id="open" hx-get="/admin/open" hx-trigger="load" hx-swap="innerHTML"></div>
+
+    <h2>{{t "openap.title"}}</h2>
+    <div id="openap" hx-get="/admin/openap" hx-trigger="load" hx-swap="innerHTML"></div>
 {{end}}
     <h2>{{t "admin.pending"}}</h2>
     <div id="pending" hx-get="/admin/pending" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>

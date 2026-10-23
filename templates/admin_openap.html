@@ -1,0 +1,11 @@
+<div class="card">
+{{range .Routers}}
+  <div class="item"><div class="row">
+    <div><div class="name">{{if .On}}<span class="dot"></span>{{end}}{{.Name}} &middot; {{if .On}}{{t "openap.on"}}{{else}}{{t "openap.off"}}{{end}}</div>
+      {{if .Err}}<div class="meta">{{.Err}}</div>{{end}}</div>
+    {{if not .Err}}<form hx-post="/admin/openap/{{.Name}}/{{if .On}}off{{else}}on{{end}}" hx-target="#openap" hx-swap="innerHTML">
+      <button type="submit"{{if .On}} class="btn-danger"{{end}}>{{if .On}}{{t "openap.btn_off"}}{{else}}{{t "openap.btn_on"}}{{end}}</button>
+    </form>{{end}}
+  </div></div>
+{{end}}
+</div>

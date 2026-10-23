@@ -89,6 +89,8 @@ func (a *App) routes() *http.ServeMux {
 	mux.HandleFunc("GET /admin/open", a.requireAdmin(a.adminOpen))
 	mux.HandleFunc("POST /admin/open", a.requireAdmin(a.adminOpenOn))
 	mux.HandleFunc("POST /admin/open/off", a.requireAdmin(a.adminOpenOff))
+	mux.HandleFunc("GET /admin/openap", a.requireAdmin(a.adminOpenAP))
+	mux.HandleFunc("POST /admin/openap/{router}/{state}", a.requireAdmin(a.adminOpenAPSet))
 	mux.HandleFunc("GET /admin/devices", a.requireAdmin(a.adminDevices))
 	mux.HandleFunc("GET /admin/devices.csv", a.requireAdmin(a.adminDevicesCSV))
 	mux.HandleFunc("GET /admin/users", a.requireAdmin(a.adminUsers))

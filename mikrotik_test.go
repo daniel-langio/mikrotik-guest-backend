@@ -31,6 +31,10 @@ func (f *fakeMikroTik) OnlineMACs() (map[string]bool, error) {
 
 func (f *fakeMikroTik) ClearVideoHosts() error { return nil }
 
+func (f *fakeMikroTik) OpenAP() (bool, error) { return false, nil }
+
+func (f *fakeMikroTik) SetOpenAP(on bool) error { return nil }
+
 func TestFakeMikroTik_RecordsCalls(t *testing.T) {
 	fake := &fakeMikroTik{}
 	if err := fake.AuthorizeDevice("AA:BB:CC:DD:EE:FF"); err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -36,6 +37,8 @@ type MikroTikClient interface {
 	DNSNames() (map[string]string, error)
 	OnlineMACs() (map[string]bool, error)
 	ClearVideoHosts() error
+	OpenAP() (bool, error)
+	SetOpenAP(on bool) error
 }
 
 // Conn is one entry of the router's connection-tracking table.
@@ -259,4 +262,40 @@ func (c *routerOSClient) ClearVideoHosts() error {
 		}
 	}
 	return nil
+}
+
+// openAPName is the virtual AP created by scripts/install-open-ap.sh.
+const openAPName = "wlan1-open"
+
+// OpenAP reports whether the open AP is enabled (error if it isn't installed).
+func (c *routerOSClient) OpenAP() (bool, error) {
+	client, err := c.dial()
+	if err != nil {
+		return false, err
+	}
+	defer client.Close()
+
+	reply, err := client.Run("/interface/wireless/print", "?name="+openAPName, "=.proplist=disabled")
+	if err != nil {
+		return false, err
+	}
+	if len(reply.Re) == 0 {
+		return false, fmt.Errorf("%s not installed - run scripts/install-open-ap.sh", openAPName)
+	}
+	return reply.Re[0].Map["disabled"] != "true", nil
+}
+
+func (c *routerOSClient) SetOpenAP(on bool) error {
+	client, err := c.dial()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	cmd := "/interface/wireless/disable"
+	if on {
+		cmd = "/interface/wireless/enable"
+	}
+	_, err = client.Run(cmd, "=numbers="+openAPName)
+	return err
 }
