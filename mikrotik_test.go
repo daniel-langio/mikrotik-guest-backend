@@ -34,6 +34,7 @@ func (f *fakeMikroTik) ClearVideoHosts() error { return nil }
 func (f *fakeMikroTik) OpenAP() (bool, error) { return false, nil }
 
 func (f *fakeMikroTik) SetOpenAP(on bool) error { return nil }
+func (f *fakeMikroTik) Address() string         { return "" }
 
 func TestFakeMikroTik_RecordsCalls(t *testing.T) {
 	fake := &fakeMikroTik{}

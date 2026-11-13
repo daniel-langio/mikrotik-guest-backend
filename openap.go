@@ -6,8 +6,8 @@ import (
 )
 
 type openAPRow struct {
-	Name, Err string
-	On        bool
+	Name, Addr, Err string
+	On              bool
 }
 
 // renderOpenAP reads each router's live state (no DB copy to drift).
@@ -15,7 +15,7 @@ func (a *App) renderOpenAP(w http.ResponseWriter, r *http.Request) {
 	var rows []openAPRow
 	for name, mt := range a.routers {
 		on, err := mt.OpenAP()
-		row := openAPRow{Name: name, On: on}
+		row := openAPRow{Name: name, Addr: mt.Address(), On: on}
 		if err != nil {
 			row.Err = err.Error()
 		}

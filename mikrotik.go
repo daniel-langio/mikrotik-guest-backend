@@ -39,6 +39,7 @@ type MikroTikClient interface {
 	ClearVideoHosts() error
 	OpenAP() (bool, error)
 	SetOpenAP(on bool) error
+	Address() string // host:port from ROUTERS, shown to admins
 }
 
 // Conn is one entry of the router's connection-tracking table.
@@ -85,6 +86,8 @@ func loadRouters() (clients map[string]MikroTikClient, defaultName string) {
 	}
 	return clients, defaultName
 }
+
+func (c *routerOSClient) Address() string { return c.address }
 
 // dial opens a fresh connection per call. Traffic volume here (an admin
 // approving guests) is far too low to justify a pooled/persistent client.
