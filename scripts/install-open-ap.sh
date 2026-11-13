@@ -28,3 +28,6 @@ ensure "/ip dhcp-server network print terse where address=192.168.78.0/24" \
   "/ip dhcp-server network add address=192.168.78.0/24 gateway=192.168.78.1 dns-server=192.168.78.1" "dhcp network"
 ensure "/ip firewall nat print terse where comment=open-ap" \
   "/ip firewall nat add chain=srcnat src-address=192.168.78.0/24 action=masquerade comment=open-ap" "NAT"
+# without LAN membership the defconf "drop all not coming from LAN" rule blocks DNS to the router
+ensure "/interface list member print terse where list=LAN interface=open-bridge" \
+  "/interface list member add list=LAN interface=open-bridge" "open-bridge in LAN list"
